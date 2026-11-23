@@ -93,7 +93,9 @@ AudioStreamBasicDescription floatFormat(double sampleRate, int channels) {
     AudioStreamBasicDescription f = {};
     f.mSampleRate = sampleRate;
     f.mFormatID = kAudioFormatLinearPCM;
-    f.mFormatFlags = kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved;
+    // The two constants come from different unnamed enums; combine them as AudioFormatFlags.
+    f.mFormatFlags = static_cast<AudioFormatFlags>(kAudioFormatFlagsNativeFloatPacked) |
+                     static_cast<AudioFormatFlags>(kAudioFormatFlagIsNonInterleaved);
     f.mBytesPerPacket = sizeof(float);
     f.mFramesPerPacket = 1;
     f.mBytesPerFrame = sizeof(float);
@@ -780,24 +782,33 @@ NSString* describeStatus(OSStatus err) {
                                         }
                                       }]];
 
-    [_observers addObject:[nc addObserverForName:AVAudioSessionInterruptionNotification
+    // iOS 27 replaces the interruption notification with session life-cycle notifications.
+    // The app never deactivates its own session, so becoming inactive always means the
+    // system took it (a call, another app); stop cleanly and wait for the recommendation.
+    [_observers addObject:[nc addObserverForName:AVAudioSessionDidBecomeInactiveNotification
                                           object:session
                                            queue:main
                                       usingBlock:^(NSNotification* note) {
+                                        (void)note;
                                         GRAudioEngine* s = weakSelf;
-                                        if (s == nil) return;
-                                        const NSUInteger type =
-                                            [note.userInfo[AVAudioSessionInterruptionTypeKey]
-                                                unsignedIntegerValue];
-                                        if (type == AVAudioSessionInterruptionTypeBegan) {
-                                            [s teardownUnit];
-                                            if (s->_wantsRunning) {
-                                                [s setState:GREngineStateInterrupted
-                                                    message:@"Interrupted by another app"];
-                                            }
-                                        } else {
-                                            [s scheduleRestart];
-                                        }
+                                        if (s == nil || !s->_wantsRunning) return;
+                                        [s teardownUnit];
+                                        [s setState:GREngineStateInterrupted
+                                            message:@"Interrupted by another app"];
+                                      }]];
+
+    // Posted when an interruption ends, and also when an activation was refused. Restart
+    // only from the interrupted state: a refused restart then lands in Failed instead of
+    // looping. A live rig should come back on its own, so the recommendation itself is
+    // not read; if the system still holds the audio, activation fails and says so.
+    [_observers addObject:[nc addObserverForName:AVAudioSessionResumptionRecommendationNotification
+                                          object:session
+                                           queue:main
+                                      usingBlock:^(NSNotification* note) {
+                                        (void)note;
+                                        GRAudioEngine* s = weakSelf;
+                                        if (s == nil || s->_state != GREngineStateInterrupted) return;
+                                        [s scheduleRestart];
                                       }]];
 
     [_observers addObject:[nc addObserverForName:AVAudioSessionMediaServicesWereResetNotification
