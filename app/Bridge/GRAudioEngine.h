@@ -68,7 +68,7 @@ typedef NS_ENUM(NSInteger, GRLoopbackPhase) {
 /// otherwise the first device with both inputs and outputs. Ignored on iPadOS, where
 /// the system route decides.
 @property (nonatomic, copy, nullable) NSString *preferredDeviceUID;
-@property (nonatomic) double preferredSampleRate;      // default 48000
+@property (nonatomic) double preferredSampleRate;      // default 96000 (docs/latency.md)
 @property (nonatomic) NSInteger preferredBufferFrames; // default 32
 @property (nonatomic) NSInteger inputChannel;          // zero-based, default 0 (input 1)
 @property (nonatomic) BOOL outputToBothChannels;       // NO: output 1 only; YES: outputs 1 and 2

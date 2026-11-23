@@ -266,7 +266,7 @@ NSString* describeStatus(OSStatus err) {
     if ((self = [super init])) {
         _render = std::make_unique<RenderState>();
         _dsp = gigrig_create();
-        _preferredSampleRate = 48000.0;
+        _preferredSampleRate = 96000.0;
         _preferredBufferFrames = 32;
         _inputChannel = 0;
         _outputToBothChannels = NO;
