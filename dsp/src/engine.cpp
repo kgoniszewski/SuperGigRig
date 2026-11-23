@@ -20,6 +20,7 @@ bool Engine::prepare(double sampleRate, int maxBlockSize) {
     maxBlockSize_ = maxBlockSize;
     inputGain_.prepare(sampleRate, kGainRampSeconds);
     outputGain_.prepare(sampleRate, kGainRampSeconds);
+    combo40_.prepare(sampleRate, maxBlockSize);
     cab_.prepare(sampleRate);
     reset();
     prepared_ = true;
@@ -32,7 +33,8 @@ void Engine::reset() noexcept {
     outputDb_ = params_.get(GIGRIG_PARAM_OUTPUT_LEVEL);
     inputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(inputDb_))));
     outputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(outputDb_))));
-    readCabParameters();
+    readParameters();
+    combo40_.reset();
     cab_.reset();
 }
 
@@ -69,6 +71,19 @@ void Engine::readParameters() noexcept {
         outputDb_ = out;
         outputGain_.setTarget(static_cast<float>(dbToGain(static_cast<double>(out))));
     }
+    amp::Combo40::Settings combo;
+    combo.bright = params_.get(GIGRIG_PARAM_COMBO40_BRIGHT) >= 0.5f;
+    combo.volume = params_.get(GIGRIG_PARAM_COMBO40_VOLUME);
+    combo.treble = params_.get(GIGRIG_PARAM_COMBO40_TREBLE);
+    combo.bass = params_.get(GIGRIG_PARAM_COMBO40_BASS);
+    combo.outputDb = params_.get(GIGRIG_PARAM_COMBO40_OUTPUT);
+    combo40_.setSettings(combo);
+    // A bypassed amp keeps no stale state: switching it back on starts it from rest.
+    const bool ampOn = params_.get(GIGRIG_PARAM_AMP_ON) >= 0.5f;
+    if (ampOn && !ampOn_) {
+        combo40_.reset();
+    }
+    ampOn_ = ampOn;
     readCabParameters();
 }
 
@@ -86,10 +101,13 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     commands_.drain([this](const Command& c) noexcept { return applyCommand(c); });
     readParameters();
 
-    // At 0 dB both gains are exactly 1 and an empty cabinet passes through,
-    // so the chain stays bit exact at its defaults.
+    // Input level, the amp, the cabinet, then output level. With the amp bypassed,
+    // an empty cabinet and both levels at 0 dB, the chain stays bit exact.
     for (int i = 0; i < numSamples; ++i) {
         output[i] = input[i] * inputGain_.next();
+    }
+    if (ampOn_) {
+        combo40_.process(output, numSamples);
     }
     cab_.process(output, output, numSamples);
     for (int i = 0; i < numSamples; ++i) {

@@ -20,9 +20,10 @@
  *     (the app's worker queue): they are the single producer of the command
  *     queue. They may run while audio is playing.
  *
- * State after work package 3: Input level, the Cab section (two IR slots and
- * a room) and Output level. Meters and the rest of the chain
- * (docs/architecture.md, sections 3 and 4) arrive in later packages.
+ * State after work package 4: Input level, the Combo 40 amp (on by default,
+ * bypassed with "amp.on" = 0), the Cab section (two IR slots and a room) and
+ * Output level. Meters and the rest of the chain (docs/architecture.md,
+ * sections 3 and 4) arrive in later packages.
  */
 #ifndef GIGRIG_GIGRIG_H
 #define GIGRIG_GIGRIG_H
@@ -36,7 +37,7 @@ extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 3
+#define GIGRIG_API_VERSION 4
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0
@@ -98,7 +99,8 @@ void gigrig_process(GigRigEngine* engine, const float* input, float* output, int
 /* Latency the engine adds, in samples at the prepared rate. Always 0 by design. */
 int32_t gigrig_latency_samples(const GigRigEngine* engine);
 
-/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ---- */
+/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ----
+ * API version 4: the amp parameters (ids 12 to 17) and the Combo 40 amp in gigrig_process. */
 
 /* Number of parameters (GIGRIG_PARAM_COUNT). */
 int32_t gigrig_param_count(void);

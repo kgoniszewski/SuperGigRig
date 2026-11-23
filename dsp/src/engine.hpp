@@ -1,13 +1,15 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
-// Chain so far: Input level, Cab (work package 3), Output level. Later
-// packages add the other blocks of docs/architecture.md, section 4, and meters. Keep this class free of virtual dispatch on
+// Chain so far: Input level, Combo 40 amp (work package 4), Cab (work package 3),
+// Output level. Later packages add the other blocks of docs/architecture.md,
+// section 4, and meters. Keep this class free of virtual dispatch on
 // the audio path.
 #pragma once
 
 #include <atomic>
 #include <cstdint>
 
+#include "amps/combo40.hpp"
 #include "blocks/smoother.hpp"
 #include "cab/cabinet.hpp"
 #include "commands.hpp"
@@ -68,6 +70,9 @@ private:
     float outputDb_ = 0.0f;
     LinearSmoother inputGain_;
     LinearSmoother outputGain_;
+
+    amp::Combo40 combo40_;
+    bool ampOn_ = true;
 
     Cabinet cab_;
     std::atomic<double> loaderRate_{0.0};

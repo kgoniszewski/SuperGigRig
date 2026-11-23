@@ -27,6 +27,9 @@ using EnginePtr = std::unique_ptr<GigRigEngine, EngineDeleter>;
 EnginePtr makeEngine(double sampleRate, int maxBlock) {
     EnginePtr e{gigrig_create()};
     REQUIRE(e != nullptr);
+    // These tests check the interface and level path, so the amp (on by default
+    // since work package 4) is bypassed to keep the chain bit exact.
+    gigrig_set_param(e.get(), GIGRIG_PARAM_AMP_ON, 0.0f);
     REQUIRE(gigrig_prepare(e.get(), sampleRate, maxBlock) == GIGRIG_OK);
     return e;
 }
@@ -78,10 +81,22 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     for (int i = 0; i < 10; ++i) {
         CHECK(std::strcmp(parameterInfo(2 + i).key, cabKeys[i]) == 0);
     }
+    CHECK(GIGRIG_PARAM_AMP_ON == 12);
+    CHECK(GIGRIG_PARAM_COMBO40_BRIGHT == 13);
+    CHECK(GIGRIG_PARAM_COMBO40_VOLUME == 14);
+    CHECK(GIGRIG_PARAM_COMBO40_TREBLE == 15);
+    CHECK(GIGRIG_PARAM_COMBO40_BASS == 16);
+    CHECK(GIGRIG_PARAM_COMBO40_OUTPUT == 17);
+    const char* const ampKeys[] = {"amp.on",         "combo40.bright", "combo40.volume",
+                                   "combo40.treble", "combo40.bass",   "combo40.output"};
+    for (int i = 0; i < 6; ++i) {
+        CHECK(std::strcmp(parameterInfo(12 + i).key, ampKeys[i]) == 0);
+    }
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {
-    auto e = makeEngine(48000.0, 64);
+    EnginePtr e{gigrig_create()};
+    REQUIRE(e != nullptr);
     for (int32_t id = 0; id < gigrig_param_count(); ++id) {
         CHECK(gigrig_get_param(e.get(), id) == parameterInfo(id).default_value);
     }
@@ -151,6 +166,7 @@ TEST_CASE("input and output levels apply in dB after a fixed ramp") {
 TEST_CASE("prepare and reset start at the current levels without a ramp") {
     EnginePtr e{gigrig_create()};
     REQUIRE(e != nullptr);
+    gigrig_set_param(e.get(), GIGRIG_PARAM_AMP_ON, 0.0f);
     gigrig_set_param(e.get(), GIGRIG_PARAM_OUTPUT_LEVEL, -6.0f);
     REQUIRE(gigrig_prepare(e.get(), 48000.0, 32) == GIGRIG_OK);
     std::vector<float> in(32, 0.5f), out(32);
