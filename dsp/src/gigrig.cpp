@@ -2,14 +2,11 @@
 #include <gigrig/gigrig.h>
 
 #include "denormals.hpp"
-#include "engine.hpp"
+#include "engine_handle.hpp"
+#include "parameters.hpp"
 
 #include <algorithm>
 #include <new>
-
-struct GigRigEngine {
-    gigrig::Engine engine;
-};
 
 extern "C" {
 
@@ -70,6 +67,45 @@ void gigrig_process(GigRigEngine* engine, const float* input, float* output, int
 
 int32_t gigrig_latency_samples(const GigRigEngine* engine) {
     return engine != nullptr ? engine->engine.latencySamples() : 0;
+}
+
+int32_t gigrig_param_count(void) {
+    return GIGRIG_PARAM_COUNT;
+}
+
+GigRigStatus gigrig_param_info(int32_t id, GigRigParamInfo* info) {
+    if (info == nullptr || !gigrig::isValidParam(id)) {
+        return GIGRIG_ERROR_INVALID_PARAM;
+    }
+    *info = gigrig::parameterInfo(id);
+    return GIGRIG_OK;
+}
+
+int32_t gigrig_param_find(const char* key) {
+    return key != nullptr ? gigrig::findParameter(key) : -1;
+}
+
+void gigrig_set_param(GigRigEngine* engine, int32_t id, float value) {
+    if (engine != nullptr) {
+        engine->engine.parameters().set(id, value);
+    }
+}
+
+float gigrig_get_param(const GigRigEngine* engine, int32_t id) {
+    return engine != nullptr ? engine->engine.parameters().get(id) : 0.0f;
+}
+
+float gigrig_param_to_normalized(int32_t id, float value) {
+    return gigrig::isValidParam(id) ? gigrig::parameterToNormalized(gigrig::parameterInfo(id), value) : 0.0f;
+}
+
+float gigrig_param_from_normalized(int32_t id, float normalized) {
+    return gigrig::isValidParam(id) ? gigrig::parameterFromNormalized(gigrig::parameterInfo(id), normalized)
+                                    : 0.0f;
+}
+
+int32_t gigrig_collect_garbage(GigRigEngine* engine) {
+    return engine != nullptr ? engine->engine.collectGarbage() : 0;
 }
 
 }  // extern "C"

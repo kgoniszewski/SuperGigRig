@@ -5,6 +5,7 @@ project(GigRigDSP VERSION 0.1.0 LANGUAGES CXX)
 
 option(GIGRIG_BUILD_TESTS "Build the GigRigDSP tests" ON)
 option(GIGRIG_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
+option(GIGRIG_BUILD_TOOLS "Build the command-line tools (gigrig_render)" ON)
 option(GIGRIG_SANITIZE "Build with address and undefined-behaviour sanitisers" OFF)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -35,13 +36,27 @@ endif()
 
 # The core library. New DSP sources are added to this list.
 add_library(gigrig_dsp STATIC
+  src/blocks/biquad.cpp
+  src/blocks/delay_line.cpp
+  src/blocks/oversampler.cpp
   src/engine.cpp
-  src/gigrig.cpp)
+  src/gigrig.cpp
+  src/parameters.cpp)
 add_library(GigRig::dsp ALIAS gigrig_dsp)
 target_include_directories(gigrig_dsp
   PUBLIC include
   PRIVATE src)
 target_link_libraries(gigrig_dsp PRIVATE gigrig_options)
+
+# Internal headers (src/) are visible to the tools and tests so they can test
+# the building blocks directly; the app only uses include/gigrig.
+add_library(gigrig_dsp_internal INTERFACE)
+target_include_directories(gigrig_dsp_internal INTERFACE src)
+target_link_libraries(gigrig_dsp_internal INTERFACE gigrig_dsp)
+
+if(GIGRIG_BUILD_TOOLS OR GIGRIG_BUILD_TESTS)
+  add_subdirectory(tools/render)
+endif()
 
 if(GIGRIG_BUILD_TESTS)
   enable_testing()

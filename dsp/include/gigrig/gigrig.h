@@ -10,20 +10,30 @@
  *   - gigrig_process runs on the audio thread. It never allocates, locks,
  *     logs or makes system calls.
  *
- * Work package 0 state: the engine is a passthrough. Parameters, commands
- * and meters (see docs/architecture.md, section 3) arrive in later packages.
+ *   - Parameter functions (gigrig_set_param and friends) may be called from
+ *     any thread at any time; values cross to the audio thread through one
+ *     flat array of atomic floats and are read once per block.
+ *   - gigrig_collect_garbage runs on one non-audio thread (the app's worker
+ *     queue), never on the audio thread.
+ *
+ * Work package 2 state: the parameter table and command queues exist, and the
+ * engine applies the Input and Output levels around an otherwise empty chain.
+ * Meters and the signal chain (docs/architecture.md, sections 3 and 4) arrive
+ * in later packages.
  */
 #ifndef GIGRIG_GIGRIG_H
 #define GIGRIG_GIGRIG_H
 
 #include <stdint.h>
 
+#include "gigrig_params.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 1
+#define GIGRIG_API_VERSION 2
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0
@@ -35,7 +45,8 @@ typedef enum GigRigStatus {
     GIGRIG_ERROR_NULL_ENGINE = 1,
     GIGRIG_ERROR_INVALID_SAMPLE_RATE = 2,
     GIGRIG_ERROR_INVALID_BLOCK_SIZE = 3,
-    GIGRIG_ERROR_OUT_OF_MEMORY = 4
+    GIGRIG_ERROR_OUT_OF_MEMORY = 4,
+    GIGRIG_ERROR_INVALID_PARAM = 5
 } GigRigStatus;
 
 /* Opaque engine handle. */
@@ -76,6 +87,44 @@ void gigrig_process(GigRigEngine* engine, const float* input, float* output, int
 
 /* Latency the engine adds, in samples at the prepared rate. Always 0 by design. */
 int32_t gigrig_latency_samples(const GigRigEngine* engine);
+
+/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ---- */
+
+/* Number of parameters (GIGRIG_PARAM_COUNT). */
+int32_t gigrig_param_count(void);
+
+/* Fills *info for a parameter id. Returns GIGRIG_ERROR_INVALID_PARAM for an unknown id or NULL info. */
+GigRigStatus gigrig_param_info(int32_t id, GigRigParamInfo* info);
+
+/* Id of the parameter with this preset key, or -1 if there is none. */
+int32_t gigrig_param_find(const char* key);
+
+/*
+ * Sets a parameter. Any thread, real-time safe, lock free. The value is
+ * clamped to the parameter's range (and rounded for stepped parameters); NaN
+ * is ignored. Unknown ids and a NULL engine are ignored. The audio thread
+ * picks the value up at the start of its next block and smooths it.
+ */
+void gigrig_set_param(GigRigEngine* engine, int32_t id, float value);
+
+/* Current value of a parameter (the last value set), or 0 for an unknown id or NULL engine. */
+float gigrig_get_param(const GigRigEngine* engine, int32_t id);
+
+/* Knob position (0 to 1) of a value, following the parameter's taper. 0 for an unknown id. */
+float gigrig_param_to_normalized(int32_t id, float value);
+
+/* Value at a knob position (0 to 1, clamped), following the taper. 0 for an unknown id. */
+float gigrig_param_from_normalized(int32_t id, float normalized);
+
+/* ---- Commands (API version 2) ---- */
+
+/*
+ * Frees objects the audio thread has retired (for example a cabinet IR that
+ * was replaced). Call regularly, for example at 30 Hz alongside meter reads,
+ * from one non-audio thread. Returns the number of objects freed. Not
+ * real-time safe.
+ */
+int32_t gigrig_collect_garbage(GigRigEngine* engine);
 
 #ifdef __cplusplus
 } /* extern "C" */
