@@ -153,6 +153,40 @@ typedef enum GigRigSmoothing {
     X(GIGRIG_PARAM_EQ_HIGH_GAIN, 49, "eq.high.gain", "High Gain", "dB", -12.0f, 12.0f, 0.0f,              \
       GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
     X(GIGRIG_PARAM_EQ_ON, 50, "eq.on", "On", "", 0.0f, 1.0f, 0.0f,                                        \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Tempo (status bar): tap tempo in the app writes it; the Digital Delay syncs to it. */              \
+    X(GIGRIG_PARAM_TEMPO_BPM, 51, "tempo.bpm", "Tempo", "BPM", 40.0f, 240.0f, 120.0f,                     \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    /* Post FX: Digital Delay (row 12). sync: 0 free, 1 tempo. division: 0 1/2, 1 dotted 1/4, 2 1/4, */   \
+    /* 3 dotted 1/8, 4 1/4 triplet, 5 1/8, 6 1/16. */                                                     \
+    X(GIGRIG_PARAM_DELAY_TIME, 52, "delay.time", "Time", "ms", 20.0f, 2000.0f, 400.0f,                    \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_DELAY_SYNC, 53, "delay.sync", "Sync", "", 0.0f, 1.0f, 0.0f,                            \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_DELAY_DIVISION, 54, "delay.division", "Division", "", 0.0f, 6.0f, 3.0f,                \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_DELAY_FEEDBACK, 55, "delay.feedback", "Feedback", "%", 0.0f, 100.0f, 30.0f,            \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_DELAY_MIX, 56, "delay.mix", "Mix", "%", 0.0f, 100.0f, 25.0f,                           \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_DELAY_HARDNESS, 57, "delay.hardness", "Hardness", "", 0.0f, 10.0f, 5.0f,               \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_DELAY_ON, 58, "delay.on", "On", "", 0.0f, 1.0f, 0.0f,                                  \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Post FX: Studio Reverb (row 13). mode: 0 hall, 1 plate. */                                         \
+    X(GIGRIG_PARAM_REVERB_MODE, 59, "reverb.mode", "Mode", "", 0.0f, 1.0f, 0.0f,                          \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_REVERB_MIX, 60, "reverb.mix", "Mix", "%", 0.0f, 100.0f, 20.0f,                         \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_REVERB_PREDELAY, 61, "reverb.predelay", "Pre-delay", "ms", 0.0f, 250.0f, 20.0f,        \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_REVERB_DECAY, 62, "reverb.decay", "Decay", "s", 0.3f, 10.0f, 2.5f,                     \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_REVERB_LOWCUT, 63, "reverb.lowcut", "Low Cut", "Hz", 20.0f, 1000.0f, 100.0f,           \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_REVERB_HIGHCUT, 64, "reverb.highcut", "High Cut", "Hz", 1000.0f, 20000.0f, 8000.0f,    \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_REVERB_ON, 65, "reverb.on", "On", "", 0.0f, 1.0f, 0.0f,                                \
       GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)
 /* clang-format on */
 

@@ -1,7 +1,8 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
 // Chain so far: Input level, Pre FX (work package 9), Combo 40 amp (work package 4),
-// Cab (work package 3), EQ (work package 11), Output level. Later packages add the other blocks of docs/architecture.md,
+// Cab (work package 3), EQ (work package 11),
+// Post FX (work package 12), Output level. Later packages add the other blocks of docs/architecture.md,
 // section 4, and meters. Keep this class free of virtual dispatch on
 // the audio path.
 #pragma once
@@ -14,6 +15,7 @@
 #include "cab/cabinet.hpp"
 #include "commands.hpp"
 #include "effects/eq.hpp"
+#include "effects/post_fx.hpp"
 #include "effects/pre_fx.hpp"
 #include "parameters.hpp"
 
@@ -74,6 +76,7 @@ private:
     LinearSmoother outputGain_;
     PreFx preFx_;
     Eq eq_;
+    PostFx postFx_;
 
     amp::Combo40 combo40_;
     bool ampOn_ = true;
