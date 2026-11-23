@@ -103,6 +103,13 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     for (int i = 0; i < 22; ++i) {
         CHECK(std::strcmp(parameterInfo(18 + i).key, wp9Keys[i]) == 0);
     }
+    // Work package 11: EQ, ids 40 to 50.
+    const char* const wp11Keys[] = {"eq.highpass",  "eq.lowpass",   "eq.low.freq",  "eq.low.gain",
+                                    "eq.mid1.freq", "eq.mid1.gain", "eq.mid2.freq", "eq.mid2.gain",
+                                    "eq.high.freq", "eq.high.gain", "eq.on"};
+    for (int i = 0; i < 11; ++i) {
+        CHECK(std::strcmp(parameterInfo(40 + i).key, wp11Keys[i]) == 0);
+    }
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {

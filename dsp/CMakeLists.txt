@@ -49,6 +49,7 @@ add_library(gigrig_dsp STATIC
   src/effects/boost.cpp
   src/effects/bucket_delay.cpp
   src/effects/env_filter.cpp
+  src/effects/eq.cpp
   src/effects/gold_od.cpp
   src/effects/pre_fx.cpp
   src/effects/twin_od.cpp

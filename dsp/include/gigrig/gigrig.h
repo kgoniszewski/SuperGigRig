@@ -22,8 +22,8 @@
  *
  * State after work packages 3, 4 and 9: Input level, the Pre FX pedals
  * (parameters 18 to 39, all off by default), the Combo 40 amp (on by default,
- * bypassed with "amp.on" = 0), the Cab section (two IR slots and a room) and
- * Output level. Meters and the rest of the chain (docs/architecture.md,
+ * bypassed with "amp.on" = 0), the Cab section (two IR slots and a room), the
+ * EQ (parameters 40 to 50, off by default) and Output level. Meters and the rest of the chain (docs/architecture.md,
  * sections 3 and 4) arrive in later packages.
  */
 #ifndef GIGRIG_GIGRIG_H
@@ -38,7 +38,7 @@ extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 5
+#define GIGRIG_API_VERSION 6
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0
