@@ -5,14 +5,17 @@
 #include <chrono>
 #include <cstdio>
 #include <memory>
+#include <string>
 
 #include "blocks/fft.hpp"
 #include "cab/cabinet.hpp"
 #include "cab/convolver.hpp"
 #include "cab/impulse_response.hpp"
 #include "cab/room.hpp"
+#include "cab_model.hpp"
 #include "dsp_test_utils.hpp"
 #include "engine_handle.hpp"
+#include "wav.hpp"
 
 using namespace gigrig;
 using namespace gigrig::test;
@@ -510,4 +513,43 @@ TEST_CASE("cab benchmark: two 200 ms IRs and the room at 96 kHz, 32-sample block
     std::printf("    cab benchmark: 1 s of audio in %.1f ms (%.1f%% of one core)\n", seconds * 1000.0,
                 seconds * 100.0);
     CHECK(allFinite(y));
+}
+
+// ---- Factory IRs ----
+
+TEST_CASE("cab factory IRs: committed files match the model, have a licence row, and load") {
+    std::string licences;
+    {
+        std::FILE* f = std::fopen(GIGRIG_IRS_DIR "/LICENSES.md", "rb");
+        REQUIRE(f != nullptr);
+        char chunk[4096];
+        std::size_t got = 0;
+        while ((got = std::fread(chunk, 1, sizeof(chunk), f)) > 0) {
+            licences.append(chunk, got);
+        }
+        std::fclose(f);
+    }
+    int count = 0;
+    for (const auto& cab : tools::factoryCabinets()) {
+        for (const auto& mic : tools::factoryMics()) {
+            const std::string name = cab.name + "-" + mic.name + ".wav";
+            CHECK(licences.find("| " + name + " |") != std::string::npos);
+            tools::WavData wav;
+            std::string error;
+            REQUIRE(tools::readWav(std::string(GIGRIG_IRS_DIR) + "/" + name, wav, error));
+            CHECK(wav.channels == 1);
+            CHECK(wav.sampleRate == tools::kIrSampleRate);
+            // A tolerance rather than bit equality: libm on the Mac may round the designs differently.
+            CHECK(maxDifference(wav.samples, tools::generateCabIr(cab, mic)) < 1.0e-6);
+            for (double fs : kTestRates) {
+                const auto ir = prepareIr(makeSourceIr(wav.samples.data(), static_cast<int>(wav.frames()), 1,
+                                                       wav.sampleRate), fs);
+                CHECK(!ir.empty());
+                CHECK(static_cast<double>(ir.size()) <= 0.2 * fs);
+                CHECK(std::fabs(ir[0]) > 0.0f);  // energy from sample 0: the cabinet adds no delay
+            }
+            ++count;
+        }
+    }
+    CHECK(count == 6);
 }

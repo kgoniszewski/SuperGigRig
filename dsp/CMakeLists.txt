@@ -61,6 +61,7 @@ target_link_libraries(gigrig_dsp_internal INTERFACE gigrig_dsp)
 
 if(GIGRIG_BUILD_TOOLS OR GIGRIG_BUILD_TESTS)
   add_subdirectory(tools/render)
+  add_subdirectory(tools/irgen)
 endif()
 
 if(GIGRIG_BUILD_TESTS)
