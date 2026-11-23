@@ -1,14 +1,15 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
-// Work package 2: parameters, command queues, and Input and Output level
-// around an empty chain. Later packages add meters and the signal chain from
-// docs/architecture.md, section 4. Keep this class free of virtual dispatch on
+// Chain so far: Input level, Cab (work package 3), Output level. Later
+// packages add the other blocks of docs/architecture.md, section 4, and meters. Keep this class free of virtual dispatch on
 // the audio path.
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 
 #include "blocks/smoother.hpp"
+#include "cab/cabinet.hpp"
 #include "commands.hpp"
 #include "parameters.hpp"
 
@@ -42,6 +43,11 @@ public:
     // One non-audio thread. Frees objects the audio thread has retired.
     int collectGarbage() noexcept { return commands_.collectGarbage(); }
 
+    // Any thread: the rate the engine was last prepared at, or 0. The IR loader builds for this rate.
+    double loaderSampleRate() const noexcept { return loaderRate_.load(std::memory_order_acquire); }
+
+    const Cabinet& cabinet() const noexcept { return cab_; }
+
     bool isPrepared() const noexcept { return prepared_; }
     double sampleRate() const noexcept { return sampleRate_; }
     int maxBlockSize() const noexcept { return maxBlockSize_; }
@@ -51,8 +57,9 @@ public:
     static constexpr double kGainRampSeconds = 0.02;
 
 private:
-    Retired applyCommand(const Command& c) noexcept;
+    std::optional<Retired> applyCommand(const Command& c) noexcept;
     void readParameters() noexcept;
+    void readCabParameters() noexcept;
 
     ParameterValues params_;
     CommandQueues commands_;
@@ -61,6 +68,9 @@ private:
     float outputDb_ = 0.0f;
     LinearSmoother inputGain_;
     LinearSmoother outputGain_;
+
+    Cabinet cab_;
+    std::atomic<double> loaderRate_{0.0};
 
     double sampleRate_ = 0.0;
     int maxBlockSize_ = 0;

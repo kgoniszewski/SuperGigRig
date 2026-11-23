@@ -6,7 +6,10 @@
 #include "parameters.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <new>
+
+#include "cab/cabinet.hpp"
 
 extern "C" {
 
@@ -106,6 +109,54 @@ float gigrig_param_from_normalized(int32_t id, float normalized) {
 
 int32_t gigrig_collect_garbage(GigRigEngine* engine) {
     return engine != nullptr ? engine->engine.collectGarbage() : 0;
+}
+
+GigRigStatus gigrig_cab_load_ir(GigRigEngine* engine, int32_t slot, const float* samples, int32_t frames,
+                                int32_t channels, double sample_rate) {
+    if (engine == nullptr) {
+        return GIGRIG_ERROR_NULL_ENGINE;
+    }
+    if (slot < 0 || slot >= GIGRIG_CAB_SLOT_COUNT) {
+        return GIGRIG_ERROR_INVALID_PARAM;
+    }
+    gigrig::Engine& e = engine->engine;
+    const double rate = e.loaderSampleRate();
+    if (!(rate > 0.0)) {
+        return GIGRIG_ERROR_NOT_PREPARED;
+    }
+    try {
+        gigrig::SourceIr source = gigrig::makeSourceIr(samples, frames, channels, sample_rate);
+        if (source.samples.empty()) {
+            return GIGRIG_ERROR_INVALID_IR;
+        }
+        std::unique_ptr<gigrig::CabIr> ir = gigrig::CabIr::create(std::move(source), rate);
+        if (ir == nullptr) {
+            return GIGRIG_ERROR_INVALID_IR;
+        }
+        const gigrig::Command c = gigrig::makeCommand(gigrig::CommandType::CabLoad, slot, std::move(ir));
+        if (!e.pushCommand(c)) {
+            gigrig::disposeCommand(c);
+            return GIGRIG_ERROR_QUEUE_FULL;
+        }
+        return GIGRIG_OK;
+    } catch (const std::bad_alloc&) {
+        return GIGRIG_ERROR_OUT_OF_MEMORY;
+    }
+}
+
+GigRigStatus gigrig_cab_clear_ir(GigRigEngine* engine, int32_t slot) {
+    if (engine == nullptr) {
+        return GIGRIG_ERROR_NULL_ENGINE;
+    }
+    if (slot < 0 || slot >= GIGRIG_CAB_SLOT_COUNT) {
+        return GIGRIG_ERROR_INVALID_PARAM;
+    }
+    const gigrig::Command c{gigrig::CommandType::CabLoad, slot, nullptr, nullptr};
+    return engine->engine.pushCommand(c) ? GIGRIG_OK : GIGRIG_ERROR_QUEUE_FULL;
+}
+
+int32_t gigrig_cab_ir_length(const GigRigEngine* engine, int32_t slot) {
+    return engine != nullptr ? engine->engine.cabinet().irLength(slot) : 0;
 }
 
 }  // extern "C"

@@ -38,7 +38,12 @@ endif()
 add_library(gigrig_dsp STATIC
   src/blocks/biquad.cpp
   src/blocks/delay_line.cpp
+  src/blocks/fft.cpp
   src/blocks/oversampler.cpp
+  src/cab/cabinet.cpp
+  src/cab/convolver.cpp
+  src/cab/impulse_response.cpp
+  src/cab/room.cpp
   src/engine.cpp
   src/gigrig.cpp
   src/parameters.cpp)

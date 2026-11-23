@@ -70,6 +70,14 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     CHECK(GIGRIG_PARAM_OUTPUT_LEVEL == 1);
     CHECK(std::strcmp(parameterInfo(0).key, "input.level") == 0);
     CHECK(std::strcmp(parameterInfo(1).key, "output.level") == 0);
+    const char* const cabKeys[] = {"cab.on",         "cab.mic1.on",   "cab.mic1.level", "cab.mic1.phase",
+                                   "cab.mic1.room",  "cab.mic2.on",   "cab.mic2.level", "cab.mic2.phase",
+                                   "cab.mic2.room",  "cab.room.size"};
+    CHECK(GIGRIG_PARAM_CAB_ON == 2);
+    CHECK(GIGRIG_PARAM_CAB_ROOM_SIZE == 11);
+    for (int i = 0; i < 10; ++i) {
+        CHECK(std::strcmp(parameterInfo(2 + i).key, cabKeys[i]) == 0);
+    }
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {

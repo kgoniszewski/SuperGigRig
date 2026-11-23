@@ -46,7 +46,29 @@ typedef enum GigRigSmoothing {
     X(GIGRIG_PARAM_INPUT_LEVEL,  0, "input.level",  "Input",  "dB", -24.0f, 24.0f, 0.0f,                  \
       GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
     X(GIGRIG_PARAM_OUTPUT_LEVEL, 1, "output.level", "Output", "dB", -60.0f, 12.0f, 0.0f,                  \
-      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    /* Cab: two mic slots and the room (section 4, row 9). The IR in each slot is not a */                \
+    /* parameter: it is loaded with gigrig_cab_load_ir. Smoothing is done by the cabinet. */              \
+    X(GIGRIG_PARAM_CAB_ON,          2, "cab.on",          "Cab",          "",   0.0f,   1.0f, 1.0f,       \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_CAB_MIC1_ON,     3, "cab.mic1.on",     "Mic 1",        "",   0.0f,   1.0f, 1.0f,       \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_CAB_MIC1_LEVEL,  4, "cab.mic1.level",  "Mic 1 Level",  "dB", -36.0f, 12.0f, 0.0f,      \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_CAB_MIC1_PHASE,  5, "cab.mic1.phase",  "Mic 1 Phase",  "",   0.0f,   1.0f, 0.0f,       \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_LINEAR)                                                      \
+    X(GIGRIG_PARAM_CAB_MIC1_ROOM,   6, "cab.mic1.room",   "Mic 1 Room",   "%",  0.0f, 100.0f, 0.0f,       \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_CAB_MIC2_ON,     7, "cab.mic2.on",     "Mic 2",        "",   0.0f,   1.0f, 0.0f,       \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_CAB_MIC2_LEVEL,  8, "cab.mic2.level",  "Mic 2 Level",  "dB", -36.0f, 12.0f, 0.0f,      \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_CAB_MIC2_PHASE,  9, "cab.mic2.phase",  "Mic 2 Phase",  "",   0.0f,   1.0f, 0.0f,       \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_LINEAR)                                                      \
+    X(GIGRIG_PARAM_CAB_MIC2_ROOM,  10, "cab.mic2.room",   "Mic 2 Room",   "%",  0.0f, 100.0f, 0.0f,       \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_CAB_ROOM_SIZE,  11, "cab.room.size",   "Room Size",    "",   0.0f,   2.0f, 1.0f,       \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)
 /* clang-format on */
 
 typedef enum GigRigParamId {
