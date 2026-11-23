@@ -6,6 +6,7 @@
 > - **Harmonic Tremolo, Spring Reverb (the Verb and Trem section) and the Compressor are not in version 1.** Work package 10 is deferred, and work package 11 delivers the EQ only.
 > - **No paid macOS CI.** CI runs the DSP core on Linux only. Krzysztof builds the apps in Xcode on his Mac, and that build is the app compile check.
 > - Also deferred, as already listed in section 10: transpose, doubler, metronome and MIDI.
+> - **The default is 96 kHz with a 32 sample buffer on both devices, and CPU budgets are sized for 96 kHz.** Work package 1 measured that 48 kHz misses the 5 ms target on both devices (see section 2 and `docs/latency.md`). Sections 1, 2, 5, 6, 8 and 10 are updated to match.
 
 # SuperGigRig architecture plan
 
@@ -26,7 +27,7 @@ Decisions confirmed by Krzysztof on 2026-11-15:
 | Amp modelling | Hand-written circuit-style models of three amp types, tuned by measurement and by ear |
 | Closeness check | A/B by ear; Krzysztof does not own the reference plugin |
 | Cabinets | IR loader, free properly licensed factory IRs, user IRs; no Neural DSP IRs |
-| Latency | 48 kHz, 32 or 64 sample buffer, under 5 ms round trip on the AXE I/O One |
+| Latency | 96 kHz, 32 sample buffer, under 5 ms round trip on the AXE I/O One (changed from 48 kHz on 2026-11-23 after the work package 1 measurements) |
 | Look and naming | Same layout and workflow as the reference; original artwork and generic names; personal use only |
 
 What "as close as possible" means here: the same signal chain, the same blocks, the same controls on each block, and the same sound character. It does not mean a null-test match, because the models are written from public circuit knowledge and tuned by ear, not captured from the reference.
@@ -35,7 +36,7 @@ The reference feature inventory in this plan comes from the public [user manual]
 
 ## 2. Constraints and targets
 
-The hard target is a round trip under 5 ms at 48 kHz with a 32 sample buffer, measured by loopback on the AXE I/O One, with zero added latency from the DSP itself.
+The hard target is a round trip under 5 ms at 96 kHz with a 32 sample buffer on both devices, measured by loopback on the AXE I/O One, with zero added latency from the DSP itself.
 
 | Item | Target |
 | --- | --- |
@@ -44,13 +45,20 @@ The hard target is a round trip under 5 ms at 48 kHz with a 32 sample buffer, me
 | Interface | IK Multimedia AXE I/O One, class compliant USB audio |
 | Input | Mono, one selectable input channel (default input 1, the instrument input) |
 | Output | Mono signal, sent to output 1 or duplicated to outputs 1 and 2 (setting) |
-| Sample rate | 48 kHz default; core must run correctly at 44.1, 48, 88.2 and 96 kHz |
-| Buffer | 32 samples preferred, 64 fallback, user selectable up to 256 |
+| Sample rate | 96 kHz default on both devices; core must run correctly at 44.1, 48, 88.2 and 96 kHz |
+| Buffer | 32 samples preferred; 64 is the fallback on the Mac (it misses the target on the iPad); user selectable up to 256 |
 | DSP latency | 0 samples: minimum-phase oversampling filters and zero-latency convolution |
-| CPU | Full chain under 25% of one performance core on the M2 at 48 kHz, 32 samples |
+| CPU | Full chain under 25% of one performance core on the M2 at 96 kHz, 32 samples (about twice the work of 48 kHz); every work package sizes its CPU cost at 96 kHz |
 | Dropouts | None in a 30 minute soak test at the chosen buffer size |
 
-Latency budget at 48 kHz and 32 samples: 0.67 ms input buffer, 0.67 ms output buffer, and roughly 2 to 3 ms of converter and USB safety offsets that the interface decides. The app cannot shrink the last part, so work package 1 measures it on the real hardware before anything else is built.
+Latency budget at 96 kHz and 32 samples: 0.33 ms input buffer, 0.33 ms output buffer, and the converter and USB safety offsets that the interface and the OS decide, much of which the OS does not report. Work package 1 measured the round trip by loopback (full table in `docs/latency.md`):
+
+| Device | 96 kHz, 32 | 96 kHz, 64 | 48 kHz, 32 |
+| --- | --- | --- | --- |
+| Mac mini M4 | **2.58 ms** | 3.25 ms | 5.58 ms |
+| iPad Pro 11 M2 | **4.53 ms** | 5.20 ms | 7.90 ms |
+
+The unreported part (about 3 ms on the Mac and 4 ms on the iPad at 48 kHz) is roughly fixed in samples, so doubling the rate almost halves it in time. That is why 96 kHz with 32 samples is the only setting that meets 5 ms on both devices. The iPad keeps under 0.5 ms of margin, so the DSP must add nothing.
 
 Legal boundaries, for personal use:
 
@@ -124,13 +132,13 @@ Because the output is mono, the stereo-only features of the reference are left o
 
 ## 5. DSP design
 
-Every nonlinear block is a grey-box model: linear filters derived from the circuit, a static nonlinearity for each gain stage, and a small amount of state for bias shift and supply sag, all run at 4 times oversampling. This is far cheaper than full circuit simulation and keeps the knobs behaving like the real controls.
+Every nonlinear block is a grey-box model: linear filters derived from the circuit, a static nonlinearity for each gain stage, and a small amount of state for bias shift and supply sag, all run oversampled to about 192 kHz. This is far cheaper than full circuit simulation and keeps the knobs behaving like the real controls.
 
 ### Shared building blocks
 
 | Block | Design |
 | --- | --- |
-| Oversampler | 2 times and 4 times, polyphase IIR half-band filters (minimum phase, zero lookahead). An 8 times mode is a build option for the Mac. |
+| Oversampler | 2 times and 4 times, polyphase IIR half-band filters (minimum phase, zero lookahead). An 8 times mode is a build option for the Mac. Guidance for the blocks that use it: pick the factor from the session rate in `prepare`, 2 times at 88.2 and 96 kHz (the default) and 4 times at 44.1 and 48 kHz, so the inner rate stays near 192 kHz. A block keeps 4 times at 96 kHz only if its aliasing test needs it and the CPU budget allows. The work package 2 oversampler already supports both factors; nothing in it changes. |
 | Waveshaper | Tabulated or closed-form curve with first-order antiderivative anti-aliasing |
 | Filters | Biquads in transposed direct form II, a state-variable filter for swept filters, one-pole smoothers |
 | Delay line | Fractional delay with cubic interpolation, power-of-two circular buffer |
@@ -177,7 +185,7 @@ The public AB763 schematic is the starting point for Combo 40. The other two sta
 
 ### Cabinet
 
-The cabinet is a zero-latency convolver: the first 64 samples run as a direct FIR, the rest as non-uniformly partitioned FFT convolution with the FFT work spread evenly across blocks. IRs are loaded on the worker queue, converted to mono, resampled to the session rate, trimmed to 200 ms and normalised, then swapped in with a short crossfade. Two slots can run in parallel, each with level and phase.
+The cabinet is a zero-latency convolver: the first 64 samples run as a direct FIR, the rest as non-uniformly partitioned FFT convolution with the FFT work spread evenly across blocks. IRs are loaded on the worker queue, converted to mono, resampled to the session rate, trimmed to 200 ms and normalised, then swapped in with a short crossfade. Two slots can run in parallel, each with level and phase. At 96 kHz a 200 ms IR is 19,200 taps, twice the convolution work of 48 kHz, and the convolver is the largest single item in the 96 kHz CPU budget.
 
 The reference has continuous mic position and distance knobs. Version 1 replaces them with a list of discrete IRs per cabinet; morphing between positions is deferred.
 
@@ -193,7 +201,7 @@ Both platforms use the system I/O audio unit directly, in full duplex on one dev
 | --- | --- | --- |
 | I/O unit | `AUAudioUnit` of subtype HAL output, input and output enabled on the same device | `AUAudioUnit` of subtype Remote I/O, input and output enabled |
 | Device choice | Core Audio device list; AXE I/O One preferred automatically when present | `AVAudioSession` route; the USB interface becomes the route when plugged in |
-| Sample rate | Set the device nominal rate to 48 kHz | `setPreferredSampleRate(48000)` |
+| Sample rate | Set the device nominal rate to 96 kHz | `setPreferredSampleRate(96000)` |
 | Buffer | Set the device buffer frame size to 32 or 64 | `setPreferredIOBufferDuration` for 32 or 64 frames; use what the system grants |
 | Session | Not applicable | Category play and record, mode measurement, so no system input processing is applied |
 | Permission | Microphone usage description and audio input entitlement | Microphone usage description |
@@ -207,7 +215,7 @@ Rules for the bridge:
 - A debug-only loopback test plays a click on the output and measures its arrival on the input, so round trip latency is measured with a cable, not estimated.
 - Device unplug, route change and interruption are handled by stopping cleanly, showing the state in the UI, and restarting when the device returns.
 
-On iPadOS the system decides the smallest buffer it will grant. If it refuses 32 frames on the AXE I/O One, the fallback is 64 frames at 48 kHz, or 64 frames at 96 kHz, which halves the buffer time at about twice the CPU cost.
+On iPadOS the system decides the smallest buffer it will grant. Work package 1 found that it grants 32 frames at 96 kHz on the AXE I/O One (4.53 ms round trip). The only fallback is 64 frames at 96 kHz (5.20 ms, just over target); 48 kHz misses the target at any buffer size.
 
 ## 7. App layer
 
@@ -289,7 +297,7 @@ SuperGigRig/
 | Aliasing | A swept sine through each nonlinear block; aliased energy below a stated threshold |
 | Latency | An impulse through the full chain arrives with zero samples of delay when time effects are off |
 | Golden renders | A few DI guitar clips rendered through factory presets; changes in output must be intentional |
-| Benchmark | Full-chain CPU cost per block, tracked over time |
+| Benchmark | Full-chain CPU cost per block at 96 kHz and 32 samples, tracked over time |
 
 ### Judging closeness
 
@@ -343,8 +351,9 @@ Three points need a yes or no from Krzysztof before the plan is final, because t
 
 | Risk | Effect | Mitigation |
 | --- | --- | --- |
-| iPadOS refuses a 32 sample buffer on the AXE I/O One | Round trip above 5 ms on the iPad | Measured in package 1; fall back to 64 samples at 96 kHz |
-| Interface safety offsets are larger than assumed | Target missed on both devices regardless of code | Measured in package 1; reported honestly before DSP work starts |
+| iPadOS refuses a 32 sample buffer on the AXE I/O One | Round trip above 5 ms on the iPad | Measured in package 1: 32 samples at 96 kHz is granted (4.53 ms); 64 samples at 96 kHz (5.20 ms) is the fallback |
+| Interface safety offsets are larger than assumed | Target missed on both devices regardless of code | Happened in package 1 at 48 kHz (5.58 ms Mac, 7.90 ms iPad); the default moved to 96 kHz, which meets the target on both |
+| Twice the DSP work at 96 kHz | Full chain over the CPU target on the iPad | 2 times oversampling at 96 kHz, convolver cost measured in package 3, per-block benchmark at 96 kHz from package 3 onward |
 | Sound is not close enough without the reference to compare | Long tuning phase | Renders after every amp package, optional 14 day trial during package 16 |
 | No suitable free IRs for a 15 inch combo or the two cabinet types | Factory cab sound is generic | User IR loading works from package 3; licences checked per file |
 | Coder cannot run the app | Swift errors found late | CI compile check, and Krzysztof builds at each milestone |

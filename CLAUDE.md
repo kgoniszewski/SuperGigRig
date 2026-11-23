@@ -7,8 +7,9 @@ sections of `docs/architecture.md` that your work package touches before you sta
 
 SuperGigRig is a standalone guitar amp rig for macOS 27 (Mac mini M4) and iPadOS 27 (iPad Pro 11 M2):
 one SwiftUI app over one portable, real-time C++ DSP core, with an IK AXE I/O One interface, mono in and
-mono out. The target is a round trip under 5 ms at 48 kHz with a 32 or 64 sample buffer, and **zero
-added latency from the DSP**. Personal use only.
+mono out. The target is a round trip under 5 ms at **96 kHz with a 32 sample buffer** (the default on both
+devices; measured in `docs/latency.md`), and **zero added latency from the DSP**. Size CPU cost at 96 kHz:
+about twice the work of 48 kHz, so prefer 2x oversampling at 96 kHz. Personal use only.
 
 ## How work is organised
 
