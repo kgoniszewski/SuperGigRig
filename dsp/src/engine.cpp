@@ -21,10 +21,11 @@ bool Engine::prepare(double sampleRate, int maxBlockSize) {
     inputGain_.prepare(sampleRate, kGainRampSeconds);
     outputGain_.prepare(sampleRate, kGainRampSeconds);
     preFx_.prepare(sampleRate, maxBlockSize, params_);
-    combo40_.prepare(sampleRate, maxBlockSize);
+    amps_.prepare(sampleRate, maxBlockSize, params_);
     cab_.prepare(sampleRate);
     eq_.setSettings(Eq::fromParameters(params_));
     eq_.prepare(sampleRate, maxBlockSize);
+    postFx_.prepare(sampleRate, maxBlockSize, params_);
     reset();
     prepared_ = true;
     loaderRate_.store(sampleRate, std::memory_order_release);
@@ -38,10 +39,11 @@ void Engine::reset() noexcept {
     outputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(outputDb_))));
     readParameters();
     preFx_.reset(params_);
-    combo40_.reset();
+    amps_.reset(params_);
     cab_.reset();
     eq_.setSettings(Eq::fromParameters(params_));
     eq_.reset();
+    postFx_.reset(params_);
 }
 
 std::optional<Retired> Engine::applyCommand(const Command& c) noexcept {
@@ -77,19 +79,7 @@ void Engine::readParameters() noexcept {
         outputDb_ = out;
         outputGain_.setTarget(static_cast<float>(dbToGain(static_cast<double>(out))));
     }
-    amp::Combo40::Settings combo;
-    combo.bright = params_.get(GIGRIG_PARAM_COMBO40_BRIGHT) >= 0.5f;
-    combo.volume = params_.get(GIGRIG_PARAM_COMBO40_VOLUME);
-    combo.treble = params_.get(GIGRIG_PARAM_COMBO40_TREBLE);
-    combo.bass = params_.get(GIGRIG_PARAM_COMBO40_BASS);
-    combo.outputDb = params_.get(GIGRIG_PARAM_COMBO40_OUTPUT);
-    combo40_.setSettings(combo);
-    // A bypassed amp keeps no stale state: switching it back on starts it from rest.
-    const bool ampOn = params_.get(GIGRIG_PARAM_AMP_ON) >= 0.5f;
-    if (ampOn && !ampOn_) {
-        combo40_.reset();
-    }
-    ampOn_ = ampOn;
+    amps_.readParameters(params_);
     readCabParameters();
 }
 
@@ -107,18 +97,17 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     commands_.drain([this](const Command& c) noexcept { return applyCommand(c); });
     readParameters();
 
-    // Input level, Pre FX, the amp, the cabinet, EQ, then output level. With every
+    // Input level, Pre FX, the amp, the cabinet, EQ, Post FX, then output level. With every
     // pedal off, the amp bypassed, an empty cabinet and both levels at 0 dB, the
     // chain stays bit exact.
     for (int i = 0; i < numSamples; ++i) {
         output[i] = input[i] * inputGain_.next();
     }
     preFx_.process(output, numSamples, params_);
-    if (ampOn_) {
-        combo40_.process(output, numSamples);
-    }
+    amps_.process(output, numSamples);
     cab_.process(output, output, numSamples);
     eq_.process(output, numSamples, Eq::fromParameters(params_));
+    postFx_.process(output, numSamples, params_);
     for (int i = 0; i < numSamples; ++i) {
         output[i] *= outputGain_.next();
     }

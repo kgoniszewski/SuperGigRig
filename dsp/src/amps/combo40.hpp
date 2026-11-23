@@ -31,6 +31,8 @@
 // internal rate and aliasing as 4x at 48 kHz for half the cost of 4x.
 #pragma once
 
+#include "amps/amp_common.hpp"
+#include "amps/power_amp.hpp"
 #include "amps/triode.hpp"
 #include "blocks/biquad.hpp"
 #include "blocks/oversampler.hpp"
@@ -39,34 +41,6 @@
 #include "blocks/waveshaper.hpp"
 
 namespace gigrig::amp {
-
-// Push-pull power section: phase inverter, output pair, rectifier sag,
-// output transformer and the global negative feedback loop. Signal in
-// phase-inverter grid volts; output normalised so 1.0 is full power.
-class Combo40PowerAmp {
-public:
-    void prepare(double sampleRate) noexcept;
-    void reset() noexcept;
-    float process(float input) noexcept;
-
-    float supply() const noexcept { return static_cast<float>(supply_); }
-
-private:
-    AdaaWaveshaper<shapes::Table> inverter_;
-    AdaaWaveshaper<shapes::Table> outputPair_;
-    Biquad transformerLowPass_;
-    double sampleRate_ = 48000.0;
-    double sagAttack_ = 0.0;
-    double sagRelease_ = 0.0;
-    double coreBase_ = 0.0;  // primary-inductance high-pass coefficient at rest
-    double fluxScale_ = 0.0;
-    double fluxLeak_ = 0.0;
-    double supplyEnvelope_ = 0.0;
-    double supply_ = 1.0;
-    double coreLow_ = 0.0;
-    double flux_ = 0.0;
-    double feedback_ = 0.0;
-};
 
 class Combo40 {
 public:
@@ -118,7 +92,7 @@ private:
     TriodeStage v2_;
     ToneNetwork tone_;
     Biquad coupling_;
-    Combo40PowerAmp power_;
+    PushPullPowerAmp power_;
 
     OnePoleSmoother volume_;
     OnePoleSmoother treble_;

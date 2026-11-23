@@ -95,5 +95,6 @@ enum PositionNames {
         "cab.mic2.phase": ["Normal", "Invert"],
         "delay.sync": ["Free", "Tempo"],
         "reverb.mode": ["Hall", "Plate"],
+        "steel100.input": ["Normal", "FET"],
     ]
 }

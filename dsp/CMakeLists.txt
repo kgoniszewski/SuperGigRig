@@ -37,6 +37,9 @@ endif()
 # The core library. New DSP sources are added to this list.
 add_library(gigrig_dsp STATIC
   src/amps/combo40.cpp
+  src/amps/power_amp.cpp
+  src/amps/steel100.cpp
+  src/amps/amp_section.cpp
   src/amps/triode.cpp
   src/blocks/biquad.cpp
   src/blocks/delay_line.cpp
@@ -47,11 +50,14 @@ add_library(gigrig_dsp STATIC
   src/cab/impulse_response.cpp
   src/cab/room.cpp
   src/effects/boost.cpp
+  src/effects/digital_delay.cpp
   src/effects/bucket_delay.cpp
   src/effects/env_filter.cpp
   src/effects/eq.cpp
   src/effects/gold_od.cpp
+  src/effects/post_fx.cpp
   src/effects/pre_fx.cpp
+  src/effects/studio_reverb.cpp
   src/effects/twin_od.cpp
   src/engine.cpp
   src/gigrig.cpp

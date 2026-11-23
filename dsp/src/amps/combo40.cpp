@@ -64,7 +64,6 @@ constexpr double kMidOhms = 6.8e3;  // the vibrato channel has no mid pot
 constexpr double kVolumePotOhms = 1.0e6;
 constexpr double kBrightCap = 120.0e-12;
 constexpr double kV2MillerCap = 100.0e-12;  // Cgk + (1 + gain) Cgp of the second 12AX7 stage
-constexpr double kMinPotOhms = 50.0;        // wiper contact resistance; keeps the network solvable
 
 // V1 grid: 68k stopper into Cgk + (1 + gain) Cgp, about 110 pF.
 constexpr double kInputCornerHz = 1.0 / (2.0 * 3.14159265358979 * 68.0e3 * 110.0e-12);
@@ -77,140 +76,42 @@ constexpr double kInputCornerHz = 1.0 / (2.0 * 3.14159265358979 * 68.0e3 * 110.0
 constexpr double kCouplingCornerHz = 3.4;
 constexpr double kInterstage = 0.055;
 
-// ---- Power section. ----
+// ---- Power section: 40 W, two 6L6-style tubes, tube rectifier, moderate feedback. ----
 
-constexpr double kInverterLimit = 1.4;  // phase inverter clips a little above full power drive
-constexpr double kClassAbBias = 0.12;   // idle conduction of each output tube, in drive units
-constexpr double kFeedback = 0.45;      // fraction of the output fed back (about 5 dB of NFB)
-constexpr double kSagDepth = 0.16;      // tube rectifier: the supply drops ~16% at full power
-constexpr double kSagAttackSeconds = 0.025;
-constexpr double kSagReleaseSeconds = 0.18;
-constexpr double kCoreCornerHz = 30.0;   // primary inductance high-pass at rest
-constexpr double kCoreSaturation = 1.5;  // how fast the corner rises with core flux
-constexpr double kTransformerTopHz = 14000.0;
+PowerAmpDesign powerDesign() noexcept {
+    PowerAmpDesign d;
+    d.inverterLimit = 1.4;
+    d.classAbBias = 0.12;
+    d.feedback = 0.45;  // about 5 dB of NFB
+    d.sagDepth = 0.16;  // tube rectifier: the supply drops ~16% at full power
+    d.sagAttackSeconds = 0.025;
+    d.sagReleaseSeconds = 0.18;
+    d.coreCornerHz = 30.0;
+    d.coreSaturation = 1.5;
+    d.transformerTopHz = 14000.0;
+    return d;
+}
+
 constexpr double kOutputScale =
     0.35;  // full power at about -9 dBFS: transients above it stay clear of 0 dBFS
 
-double softplus(double x) noexcept {
-    return x > 30.0 ? x : std::log1p(std::exp(x));
-}
-
-const WaveshaperTable& inverterTable() {
-    static const WaveshaperTable table = [] {
-        WaveshaperTable t;
-        t.build([](double x) { return kInverterLimit * std::tanh(x / kInverterLimit); }, -16.0, 16.0, 4097);
-        return t;
-    }();
-    return table;
-}
-
-// One output tube's plate current against its grid drive: a 3/2-power law from a
-// rounded cutoff, idling at kClassAbBias. The push-pull difference cancels even
-// harmonics; near zero both tubes conduct and the crossover is smooth unless
-// sag pushes the drive around it. Plate saturation (the tube running out of
-// plate voltage) then limits the swing with a fairly firm knee.
-const WaveshaperTable& outputPairTable() {
-    static const WaveshaperTable table = [] {
-        auto tube = [](double v) {
-            constexpr double knee = 0.04;
-            const double s = knee * softplus((v + kClassAbBias) / knee);
-            return s * std::sqrt(s);
-        };
-        const double norm = tube(1.0) - tube(-1.0);
-        WaveshaperTable t;
-        t.build(
-            [&](double d) {
-                const double p = (tube(d) - tube(-d)) / norm;
-                return p / std::cbrt(1.0 + std::fabs(p * p * p));
-            },
-            -6.0, 6.0, 8193);
-        return t;
-    }();
-    return table;
-}
-
 }  // namespace
-
-// ---------------------------------------------------------------- power amp
-
-void Combo40PowerAmp::prepare(double sampleRate) noexcept {
-    sampleRate_ = sampleRate;
-    inverter_.setShape(shapes::Table{&inverterTable()});
-    outputPair_.setShape(shapes::Table{&outputPairTable()});
-    transformerLowPass_.setCoefficients(
-        BiquadCoefficients::lowPass(sampleRate, std::min(kTransformerTopHz, 0.45 * sampleRate), 0.7071));
-    sagAttack_ = 1.0 - onePoleCoefficient(kSagAttackSeconds, sampleRate);
-    sagRelease_ = 1.0 - onePoleCoefficient(kSagReleaseSeconds, sampleRate);
-    coreBase_ = kTwoPi * kCoreCornerHz / sampleRate;
-    // Flux is the integral of the winding voltage, scaled so a full-power 40 Hz tone reaches 1.
-    fluxScale_ = kTwoPi * 40.0 / sampleRate;
-    fluxLeak_ = onePoleCoefficient(1.0 / (kTwoPi * 3.0), sampleRate);
-    reset();
-}
-
-void Combo40PowerAmp::reset() noexcept {
-    inverter_.reset();
-    outputPair_.reset();
-    transformerLowPass_.reset();
-    supplyEnvelope_ = 0.0;
-    supply_ = 1.0;
-    coreLow_ = 0.0;
-    flux_ = 0.0;
-    feedback_ = 0.0;
-}
-
-float Combo40PowerAmp::process(float input) noexcept {
-    // Feedback from the speaker winding enters at the inverter's tail; one sample of
-    // loop delay at 176 kHz or more is far outside the audio band, and the loop
-    // gain stays below 1 at every frequency, so the loop is unconditionally stable.
-    const double error = static_cast<double>(input) - kFeedback * feedback_;
-    const auto drive = static_cast<double>(inverter_.process(static_cast<float>(error)));
-    const double plate =
-        supply_ * static_cast<double>(outputPair_.process(static_cast<float>(drive / supply_)));
-
-    // Rectifier sag: the supply follows the current drawn, with the filter caps'
-    // slower recovery. A lower supply both lowers the clipping point and compresses.
-    const double current = std::fabs(plate);
-    supplyEnvelope_ += (current > supplyEnvelope_ ? sagAttack_ : sagRelease_) * (current - supplyEnvelope_);
-    supply_ = 1.0 - kSagDepth * supplyEnvelope_;
-
-    // Output transformer: the primary inductance is a high-pass whose corner rises
-    // as low notes push the core toward saturation, so big bass notes lose weight
-    // and gain a little grit instead of growing without limit.
-    flux_ = fluxLeak_ * flux_ + fluxScale_ * plate;
-    const double coreCoefficient = std::min(0.05, coreBase_ * (1.0 + kCoreSaturation * flux_ * flux_));
-    coreLow_ += coreCoefficient * (plate - coreLow_);
-    const auto speaker =
-        static_cast<double>(transformerLowPass_.process(static_cast<float>(plate - coreLow_)));
-    feedback_ = speaker;
-    return static_cast<float>(speaker);
-}
 
 // ---------------------------------------------------------------- amp
 
 int Combo40::factorForRate(double sampleRate) noexcept {
-    constexpr double minimumInternalRate = 176400.0;
-    if (sampleRate >= minimumInternalRate) {
-        return 1;
-    }
-    return 2.0 * sampleRate >= minimumInternalRate ? 2 : 4;
+    return ampOversamplingFactor(sampleRate);
 }
 
 double Combo40::audioTaper(double knob) noexcept {
-    // Exponential law through 0, 10% at mid travel and 100% at full: (81^x - 1) / 80.
-    const double x = std::clamp(knob / 10.0, 0.0, 1.0);
-    return (std::pow(81.0, x) - 1.0) / 80.0;
+    return audioTaperPot(knob);
 }
 
 void Combo40::configureToneNetwork(ToneNetwork& n, double sampleRate, const Settings& s) noexcept {
     enum Node { Plate, TrebleTop, Wiper, BassTop, Slope, MidTop, Volume };
-    auto split = [](double total, double fraction, double& upper, double& lower) {
-        lower = std::clamp(fraction * total, kMinPotOhms, total - kMinPotOhms);
-        upper = total - lower;
-    };
     double trebleUpper = 0.0, trebleLower = 0.0, volumeUpper = 0.0, volumeLower = 0.0;
-    split(kTreblePotOhms, audioTaper(static_cast<double>(s.treble)), trebleUpper, trebleLower);
-    split(kVolumePotOhms, audioTaper(static_cast<double>(s.volume)), volumeUpper, volumeLower);
+    splitPot(kTreblePotOhms, audioTaper(static_cast<double>(s.treble)), trebleUpper, trebleLower);
+    splitPot(kVolumePotOhms, audioTaper(static_cast<double>(s.volume)), volumeUpper, volumeLower);
     const double bassOhms = std::max(kMinPotOhms, audioTaper(static_cast<double>(s.bass)) * kBassPotOhms);
 
     n.setSampleRate(sampleRate);
@@ -243,7 +144,7 @@ void Combo40::prepare(double sampleRate, int maxBlockSize) {
     v1_.prepare(v1Table(), v1Design(), highRate_);
     v2_.prepare(v2Table(), v2Design(), highRate_);
     coupling_.setCoefficients(BiquadCoefficients::highPass1(highRate_, kCouplingCornerHz));
-    power_.prepare(highRate_);
+    power_.prepare(powerDesign(), highRate_);
 
     constexpr double knobGlideSeconds = 0.03;
     volume_.prepare(sampleRate, knobGlideSeconds);
