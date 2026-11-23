@@ -1,0 +1,49 @@
+# GigRigDSP - the portable real-time DSP core of SuperGigRig.
+# Builds on Linux, macOS and iPadOS with no third-party dependencies.
+cmake_minimum_required(VERSION 3.24)
+project(GigRigDSP VERSION 0.1.0 LANGUAGES CXX)
+
+option(GIGRIG_BUILD_TESTS "Build the GigRigDSP tests" ON)
+option(GIGRIG_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
+option(GIGRIG_SANITIZE "Build with address and undefined-behaviour sanitisers" OFF)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Shared warning and sanitiser flags, applied to every target in this project.
+add_library(gigrig_options INTERFACE)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+  target_compile_options(gigrig_options INTERFACE
+    -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
+    -Wdouble-promotion -Wnon-virtual-dtor -Wold-style-cast -Wcast-align
+    -Woverloaded-virtual -Wnull-dereference)
+  if(GIGRIG_WARNINGS_AS_ERRORS)
+    target_compile_options(gigrig_options INTERFACE -Werror)
+  endif()
+  if(GIGRIG_SANITIZE)
+    target_compile_options(gigrig_options INTERFACE
+      -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+    target_link_options(gigrig_options INTERFACE -fsanitize=address,undefined)
+  endif()
+endif()
+
+# The core library. New DSP sources are added to this list.
+add_library(gigrig_dsp STATIC
+  src/engine.cpp
+  src/gigrig.cpp)
+add_library(GigRig::dsp ALIAS gigrig_dsp)
+target_include_directories(gigrig_dsp
+  PUBLIC include
+  PRIVATE src)
+target_link_libraries(gigrig_dsp PRIVATE gigrig_options)
+
+if(GIGRIG_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()

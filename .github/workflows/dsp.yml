@@ -1,0 +1,65 @@
+name: DSP core
+
+# Builds and tests the C++ DSP core on Linux. The apps are built by Krzysztof
+# in Xcode on his Mac; there is no macOS job by decision (2026-11-23).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsp-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: clang debug + sanitisers
+            preset: dev
+          - name: clang release
+            preset: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build clang libclang-rt-18-dev
+          clang++ --version
+
+      - name: Configure
+        working-directory: dsp
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        working-directory: dsp
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        working-directory: dsp
+        run: ctest --preset ${{ matrix.preset }}
+
+  gcc:
+    name: gcc release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q ninja-build
+      - name: Configure
+        run: cmake -S dsp -B dsp/build/gcc -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build dsp/build/gcc
+      - name: Test
+        run: ctest --test-dir dsp/build/gcc --output-on-failure
