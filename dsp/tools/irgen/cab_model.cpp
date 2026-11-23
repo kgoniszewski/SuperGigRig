@@ -51,15 +51,32 @@ void addReflection(std::vector<double>& x, double delayMs, double gain, double l
 const std::vector<CabModel>& factoryCabinets() {
     static const std::vector<CabModel> cabs = {
         // Open-back combo with one 15-inch speaker: deep, round, soft top end (for Combo 40).
-        {"combo-1x15-open", 72.0, 1.4, 1.3, -0.35,
-         {{600.0, 1.0, 2.0}, {1300.0, 2.0, -3.0}, {2200.0, 2.0, 4.0}, {3300.0, 3.0, 3.0}}, 4200.0, 15u},
+        {"combo-1x15-open",
+         72.0,
+         1.4,
+         1.3,
+         -0.35,
+         {{600.0, 1.0, 2.0}, {1300.0, 2.0, -3.0}, {2200.0, 2.0, 4.0}, {3300.0, 3.0, 3.0}},
+         4200.0,
+         15u},
         // Open-back 2x12: tighter lows, a lifted upper midrange, sparkle (for Steel 100).
-        {"open-2x12", 90.0, 1.2, 1.0, -0.30,
-         {{1000.0, 1.0, -2.0}, {2600.0, 2.5, 5.0}, {4000.0, 3.0, 2.0}}, 5200.0, 212u},
+        {"open-2x12",
+         90.0,
+         1.2,
+         1.0,
+         -0.30,
+         {{1000.0, 1.0, -2.0}, {2600.0, 2.5, 5.0}, {4000.0, 3.0, 2.0}},
+         5200.0,
+         212u},
         // Closed-back 2x12: boxed low-mid thump, focused mids (for Proto 50).
-        {"closed-2x12", 100.0, 1.5, 0.0, 0.0,
+        {"closed-2x12",
+         100.0,
+         1.5,
+         0.0,
+         0.0,
          {{180.0, 1.0, 1.0}, {800.0, 1.0, 1.5}, {2800.0, 2.0, 4.0}, {3600.0, 4.0, -4.0}, {4600.0, 4.0, 2.5}},
-         5500.0, 312u},
+         5500.0,
+         312u},
     };
     return cabs;
 }

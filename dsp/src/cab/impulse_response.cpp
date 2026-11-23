@@ -63,7 +63,7 @@ std::vector<float> resampleIr(const std::vector<float>& ir, double fromRate, dou
     }
     const double ratio = toRate / fromRate;
     const double cutoff = kCutoff * std::min(1.0, ratio);  // relative to the source Nyquist
-    const double halfWidth = kHalfWidthZeros / cutoff;      // in source samples
+    const double halfWidth = kHalfWidthZeros / cutoff;     // in source samples
     // An impulse response resampled must keep its frequency response, not its
     // sample values: when the rate doubles, each sample carries half the weight.
     const double gain = cutoff / ratio;
@@ -123,7 +123,8 @@ std::vector<float> prepareIr(const SourceIr& source, double sampleRate) {
     if (ir.size() > maxLength) {
         ir.resize(maxLength);
         // A raised-cosine fade where a long IR is cut, so the cut does not ring.
-        const auto fade = std::min(maxLength, static_cast<std::size_t>(std::lround(kFadeSeconds * sampleRate)));
+        const auto fade =
+            std::min(maxLength, static_cast<std::size_t>(std::lround(kFadeSeconds * sampleRate)));
         for (std::size_t i = 0; i < fade; ++i) {
             const double x = static_cast<double>(i + 1) / static_cast<double>(fade + 1);
             ir[maxLength - 1 - i] *= static_cast<float>(0.5 - 0.5 * std::cos(kPi * x));

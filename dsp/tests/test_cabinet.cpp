@@ -110,7 +110,8 @@ TEST_CASE("cab fft: forward matches a direct DFT and inverse returns n times the
                 di += static_cast<double>(x[static_cast<std::size_t>(i)]) * std::sin(w);
             }
             const auto kk = static_cast<std::size_t>(k);
-            err = std::max(err, std::hypot(dr - static_cast<double>(re[kk]), di - static_cast<double>(im[kk])));
+            err =
+                std::max(err, std::hypot(dr - static_cast<double>(re[kk]), di - static_cast<double>(im[kk])));
         }
         CHECK(err < 1.0e-4 * std::sqrt(static_cast<double>(n)));
         std::vector<float> back(static_cast<std::size_t>(n));
@@ -221,7 +222,8 @@ TEST_CASE("cab IR: resampling keeps the frequency response at every rate") {
     const auto ref = prepareIr(src, 48000.0);
     for (double fs : kTestRates) {
         const auto ir = prepareIr(src, fs);
-        CHECK(std::fabs(static_cast<double>(ir.size()) / fs - static_cast<double>(ref.size()) / 48000.0) < 0.002);
+        CHECK(std::fabs(static_cast<double>(ir.size()) / fs - static_cast<double>(ref.size()) / 48000.0) <
+              0.002);
         // Magnitude at a few guitar-band frequencies, in dB, against the 48 kHz original.
         for (double f : {100.0, 400.0, 1800.0, 3500.0}) {
             auto mag = [f](const std::vector<float>& v, double rate) {
@@ -255,7 +257,8 @@ TEST_CASE("cab IR: long IRs are cut to 200 ms with a fade, silent tails are drop
     }
     std::vector<float> padded = testIr(3000, 48000.0);
     padded.resize(9000, 0.0f);
-    const auto ir = prepareIr(makeSourceIr(padded.data(), static_cast<int>(padded.size()), 1, 48000.0), 48000.0);
+    const auto ir =
+        prepareIr(makeSourceIr(padded.data(), static_cast<int>(padded.size()), 1, 48000.0), 48000.0);
     CHECK(ir.size() <= 3000);
 }
 
@@ -339,7 +342,8 @@ TEST_CASE("cab engine: a loaded IR plays with zero latency and matches the prepa
     for (double fs : kTestRates) {
         auto e = makeEngine(fs, 64);
         const auto h = testIr(6000, 48000.0);
-        REQUIRE(gigrig_cab_load_ir(e.get(), 0, h.data(), static_cast<int32_t>(h.size()), 1, 48000.0) == GIGRIG_OK);
+        REQUIRE(gigrig_cab_load_ir(e.get(), 0, h.data(), static_cast<int32_t>(h.size()), 1, 48000.0) ==
+                GIGRIG_OK);
         settle(e.get(), fs);
         const auto prepared = prepareIr(makeSourceIr(h.data(), static_cast<int>(h.size()), 1, 48000.0), fs);
         CHECK(gigrig_cab_ir_length(e.get(), 0) == static_cast<int32_t>(prepared.size()));
@@ -542,8 +546,8 @@ TEST_CASE("cab factory IRs: committed files match the model, have a licence row,
             // A tolerance rather than bit equality: libm on the Mac may round the designs differently.
             CHECK(maxDifference(wav.samples, tools::generateCabIr(cab, mic)) < 1.0e-6);
             for (double fs : kTestRates) {
-                const auto ir = prepareIr(makeSourceIr(wav.samples.data(), static_cast<int>(wav.frames()), 1,
-                                                       wav.sampleRate), fs);
+                const auto ir = prepareIr(
+                    makeSourceIr(wav.samples.data(), static_cast<int>(wav.frames()), 1, wav.sampleRate), fs);
                 CHECK(!ir.empty());
                 CHECK(static_cast<double>(ir.size()) <= 0.2 * fs);
                 CHECK(std::fabs(ir[0]) > 0.0f);  // energy from sample 0: the cabinet adds no delay

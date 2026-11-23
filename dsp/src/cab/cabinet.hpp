@@ -115,7 +115,7 @@ private:
     Room room_;
     LinearSmoother wet_;  // 0 = dry passthrough, 1 = cabinet
     bool enabled_ = true;
-    bool idle_ = true;    // wet is 0 and settled: nothing runs
+    bool idle_ = true;  // wet is 0 and settled: nothing runs
     double sampleRate_ = 48000.0;
     int fadeLength_ = 1;
     std::atomic<int> refused_{0};

@@ -1,10 +1,10 @@
 #include "cabinet.hpp"
 
+#include <gigrig/gigrig.h>
+
 #include <algorithm>
 #include <cstring>
 #include <utility>
-
-#include <gigrig/gigrig.h>
 
 #include "blocks/dsp_math.hpp"
 

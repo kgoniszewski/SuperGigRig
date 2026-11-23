@@ -67,7 +67,7 @@ private:
 
         void build(const float* ir, int length, int offset, int blockSize, int partitions);
         void reset() noexcept;
-        void transformInput() noexcept;        // FFT of the window into the FDL head
+        void transformInput() noexcept;              // FFT of the window into the FDL head
         void accumulate(int from, int to) noexcept;  // acc += sum of FDL x H over partitions [from, to)
         void inverseInto(float* dst) noexcept;
         bool active() const noexcept { return parts > 0; }

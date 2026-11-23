@@ -242,11 +242,67 @@ NSString* describeStatus(OSStatus err) {
 }
 @end
 
+// Worker queue. Reads the file, then hands the samples to the core, which prepares the IR
+// (mono, session rate, 200 ms, normalised) and queues it for the audio thread.
+static GigRigStatus loadIRFile(GigRigEngine* dsp, NSURL* url, int32_t slot, NSString* __autoreleasing* message) {
+    const BOOL scoped = [url startAccessingSecurityScopedResource];
+    NSError* error = nil;
+    AVAudioFile* file = [[AVAudioFile alloc] initForReading:url error:&error];
+    GigRigStatus status = GIGRIG_ERROR_INVALID_IR;
+    if (file != nil) {
+        AVAudioFormat* format = file.processingFormat;  // deinterleaved float32
+        // More than 200 ms is cut by the core anyway; one second leaves room for any rate.
+        const AVAudioFramePosition limit = static_cast<AVAudioFramePosition>(format.sampleRate);
+        const auto frames = static_cast<AVAudioFrameCount>(std::max<AVAudioFramePosition>(0, std::min(file.length, limit)));
+        AVAudioPCMBuffer* buffer = frames > 0 ? [[AVAudioPCMBuffer alloc] initWithPCMFormat:format frameCapacity:frames]
+                                              : nil;
+        if (buffer != nil && [file readIntoBuffer:buffer frameCount:frames error:&error] &&
+            buffer.floatChannelData != nullptr) {
+            const AVAudioChannelCount channels = format.channelCount;
+            const AVAudioFrameCount got = buffer.frameLength;
+            std::vector<float> interleaved(static_cast<size_t>(got) * channels);
+            for (AVAudioChannelCount c = 0; c < channels; ++c) {
+                const float* src = buffer.floatChannelData[c];
+                for (AVAudioFrameCount i = 0; i < got; ++i) interleaved[static_cast<size_t>(i) * channels + c] = src[i];
+            }
+            status = gigrig_cab_load_ir(dsp, slot, interleaved.data(), static_cast<int32_t>(got),
+                                        static_cast<int32_t>(channels), format.sampleRate);
+        }
+    }
+    if (scoped) [url stopAccessingSecurityScopedResource];
+
+    switch (status) {
+        case GIGRIG_OK:
+        case GIGRIG_ERROR_NOT_PREPARED:
+            *message = nil;
+            break;
+        case GIGRIG_ERROR_QUEUE_FULL:
+            *message = @"Too many changes at once. Try again.";
+            break;
+        case GIGRIG_ERROR_OUT_OF_MEMORY:
+            *message = @"Not enough memory to load the IR.";
+            break;
+        default:
+            *message = error != nil ? [NSString stringWithFormat:@"Cannot read %@: %@", url.lastPathComponent,
+                                                                 error.localizedDescription]
+                                    : [NSString stringWithFormat:@"%@ is not a usable impulse response "
+                                                                  "(empty or silent).",
+                                                                 url.lastPathComponent];
+            break;
+    }
+    return status;
+}
+
 // MARK: - Engine
 
 @implementation GRAudioEngine {
     std::unique_ptr<RenderState> _render;
     GigRigEngine* _dsp;
+    // The one thread that loads IRs and frees what the audio thread retired: it is the
+    // single producer of the DSP command queue and the single garbage collector.
+    dispatch_queue_t _worker;
+    dispatch_source_t _garbageTimer;
+    NSURL* _pendingIR[GIGRIG_CAB_SLOT_COUNT];  // main thread: loads waiting for the first start
     AudioUnit _unit;
     BOOL _wantsRunning;
     BOOL _restartPending;
@@ -266,6 +322,18 @@ NSString* describeStatus(OSStatus err) {
     if ((self = [super init])) {
         _render = std::make_unique<RenderState>();
         _dsp = gigrig_create();
+        _worker = dispatch_queue_create("SuperGigRig.dsp-worker",
+                                        dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL,
+                                                                                QOS_CLASS_UTILITY, 0));
+        // Replaced IRs come back from the audio thread; free them a few times a second.
+        _garbageTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _worker);
+        GigRigEngine* dsp = _dsp;
+        dispatch_source_set_event_handler(_garbageTimer, ^{
+          gigrig_collect_garbage(dsp);
+        });
+        dispatch_source_set_timer(_garbageTimer, dispatch_time(DISPATCH_TIME_NOW, 0), 200 * NSEC_PER_MSEC,
+                                  50 * NSEC_PER_MSEC);
+        dispatch_resume(_garbageTimer);
         _preferredSampleRate = 96000.0;
         _preferredBufferFrames = 32;
         _inputChannel = 0;
@@ -293,6 +361,9 @@ NSString* describeStatus(OSStatus err) {
 #else
     for (id<NSObject> o in _observers) [[NSNotificationCenter defaultCenter] removeObserver:o];
 #endif
+    dispatch_source_cancel(_garbageTimer);
+    dispatch_sync(_worker, ^{
+    });  // let any IR load in flight finish before the engine goes away
     gigrig_destroy(_dsp);
 }
 
@@ -442,6 +513,7 @@ NSString* describeStatus(OSStatus err) {
     _render->unit = _unit;
     _render->numIn = numIn;
     if (!_render->io.prepare(_dsp, rate)) return @"Preparing the DSP core failed";
+    [self loadPendingIRs];
     _render->io.setInputChannel(static_cast<int>(_inputChannel));
     _render->io.setOutputToBoth(_outputToBothChannels);
 
@@ -822,5 +894,77 @@ NSString* describeStatus(OSStatus err) {
 }
 
 #endif
+
+// MARK: Parameters and cabinet IRs
+
+- (BOOL)cabinetOn {
+    return gigrig_get_param(_dsp, GIGRIG_PARAM_CAB_ON) >= 0.5f;
+}
+
+- (void)setCabinetOn:(BOOL)on {
+    gigrig_set_param(_dsp, GIGRIG_PARAM_CAB_ON, on ? 1.0f : 0.0f);
+}
+
+- (BOOL)cabinetMic2On {
+    return gigrig_get_param(_dsp, GIGRIG_PARAM_CAB_MIC2_ON) >= 0.5f;
+}
+
+- (void)setCabinetMic2On:(BOOL)on {
+    gigrig_set_param(_dsp, GIGRIG_PARAM_CAB_MIC2_ON, on ? 1.0f : 0.0f);
+}
+
+- (NSInteger)cabinetIRLengthInSlot:(NSInteger)slot {
+    return gigrig_cab_ir_length(_dsp, static_cast<int32_t>(slot));
+}
+
+- (void)clearCabinetIRInSlot:(NSInteger)slot {
+    if (slot < 0 || slot >= GIGRIG_CAB_SLOT_COUNT) return;
+    _pendingIR[slot] = nil;
+    GigRigEngine* dsp = _dsp;
+    dispatch_async(_worker, ^{
+      gigrig_cab_clear_ir(dsp, static_cast<int32_t>(slot));
+    });
+}
+
+- (void)loadCabinetIRFromURL:(NSURL*)url
+                        slot:(NSInteger)slot
+                  completion:(void (^)(NSString* _Nullable error))completion {
+    if (slot < 0 || slot >= GIGRIG_CAB_SLOT_COUNT) {
+        completion(@"There is no such mic slot.");
+        return;
+    }
+    _pendingIR[slot] = nil;
+    GigRigEngine* dsp = _dsp;
+    __weak GRAudioEngine* weakSelf = self;
+    dispatch_async(_worker, ^{
+      NSString* message = nil;
+      const GigRigStatus status = loadIRFile(dsp, url, static_cast<int32_t>(slot), &message);
+      dispatch_async(dispatch_get_main_queue(), ^{
+        GRAudioEngine* s = weakSelf;
+        if (status == GIGRIG_ERROR_NOT_PREPARED && s != nil) {
+            s->_pendingIR[slot] = url;  // loads in loadPendingIRs once the core is prepared
+            if (s->_state == GREngineStateRunning) [s loadPendingIRs];
+            completion(nil);
+            return;
+        }
+        completion(message);
+      });
+    });
+}
+
+// Main thread, after the DSP core was prepared.
+- (void)loadPendingIRs {
+    for (NSInteger slot = 0; slot < GIGRIG_CAB_SLOT_COUNT; ++slot) {
+        NSURL* url = _pendingIR[slot];
+        if (url == nil) continue;
+        _pendingIR[slot] = nil;
+        [self loadCabinetIRFromURL:url
+                              slot:slot
+                        completion:^(NSString* _Nullable error) {
+                          if (error != nil) NSLog(@"SuperGigRig: cabinet IR not loaded: %@", error);
+                        }];
+    }
+}
+
 
 @end

@@ -31,10 +31,10 @@ struct EqBand {
 };
 
 struct CabModel {
-    std::string name;        // file name stem, generic (no trademarks)
-    double resonanceHz;      // in-box cone resonance
+    std::string name;    // file name stem, generic (no trademarks)
+    double resonanceHz;  // in-box cone resonance
     double resonanceQ;
-    double rearDelayMs;      // 0 for a closed back
+    double rearDelayMs;  // 0 for a closed back
     double rearGain;
     std::vector<EqBand> voicing;
     double rolloffHz;

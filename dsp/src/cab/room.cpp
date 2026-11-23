@@ -14,9 +14,9 @@ namespace {
 constexpr double kLineMs[Room::kLines] = {7.3, 8.9, 10.1, 11.7, 13.3, 14.9, 16.7, 18.7};
 
 struct SizeSetting {
-    double scale;     // multiplies kLineMs
-    double rt60;      // seconds
-    double dampingHz; // corner of the in-loop lowpass
+    double scale;      // multiplies kLineMs
+    double rt60;       // seconds
+    double dampingHz;  // corner of the in-loop lowpass
 };
 constexpr SizeSetting kSizeSettings[Room::kSizes] = {
     {1.0, 0.30, 7500.0},  // small: a booth
@@ -28,7 +28,8 @@ constexpr float kInputGain = 0.5f;
 constexpr double kFadeSeconds = 0.01;
 
 int lineSamples(int line, int size, double sampleRate) {
-    return std::max(1, static_cast<int>(std::lround(kLineMs[line] * kSizeSettings[size].scale * 0.001 * sampleRate)));
+    return std::max(
+        1, static_cast<int>(std::lround(kLineMs[line] * kSizeSettings[size].scale * 0.001 * sampleRate)));
 }
 
 }  // namespace
@@ -36,8 +37,8 @@ int lineSamples(int line, int size, double sampleRate) {
 void Room::prepare(double sampleRate) {
     sampleRate_ = sampleRate;
     for (int i = 0; i < kLines; ++i) {
-        lines_[static_cast<std::size_t>(i)].assign(static_cast<std::size_t>(lineSamples(i, kSizes - 1, sampleRate)),
-                                                   0.0f);
+        lines_[static_cast<std::size_t>(i)].assign(
+            static_cast<std::size_t>(lineSamples(i, kSizes - 1, sampleRate)), 0.0f);
     }
     fadeLength_ = std::max(1, static_cast<int>(std::lround(kFadeSeconds * sampleRate)));
     applySize(pendingSize_);
