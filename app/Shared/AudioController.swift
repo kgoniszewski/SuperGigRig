@@ -18,8 +18,11 @@ final class AudioController {
     /// Only 96 kHz / 32 met the 5 ms target on both (docs/latency.md).
     static let defaultSampleRate: Double = 96_000
 
-    private let engine = GRAudioEngine()
+    private let engine: GRAudioEngine
     private let defaults = UserDefaults.standard
+
+    /// Every knob and switch of the rig. The only path from the UI to the sound.
+    let parameters: ParameterStore
 
     private(set) var state: GREngineState = .stopped
     private(set) var statusMessage = "Stopped"
@@ -71,9 +74,13 @@ final class AudioController {
         static let buffer = "audio.bufferFrames"
         static let input = "audio.inputChannel"
         static let outputBoth = "audio.outputToBoth"
+        static func cabIR(_ slot: Int) -> String { "cab.factoryIR.\(slot)" }
     }
 
     init() {
+        let engine = GRAudioEngine()
+        self.engine = engine
+        parameters = ParameterStore(engine: engine)
         let d = UserDefaults.standard
         preferredDeviceUID = d.string(forKey: Keys.device) ?? ""
         let rate = d.double(forKey: Keys.rate)
@@ -91,6 +98,7 @@ final class AudioController {
         engine.outputToBothChannels = outputToBoth
         engine.onChange = { [weak self] in self?.refresh() }
         refresh()
+        restoreCabIRs()
     }
 
     var isRunning: Bool { state == .running }
@@ -120,6 +128,8 @@ final class AudioController {
         device = engine.currentDevice
         latency = engine.latency
         devices = engine.availableDevices()
+        // IRs that waited for the first start load now; show their lengths once they play.
+        if state == .running { refreshCabLengths(after: 0.3) }
     }
 
     // MARK: Permission
@@ -169,7 +179,7 @@ final class AudioController {
         }
     }
 
-    // MARK: Cabinet (work package 3; the real Cab screen comes in work package 5)
+    // MARK: Cabinet IRs (work package 3; the Cab screen since work package 5)
 
     /// File name of the IR last loaded into each mic slot, or "" for none.
     private(set) var cabIRNames: [String] = ["", ""]
@@ -181,26 +191,25 @@ final class AudioController {
     static let factoryIRs: [URL] = (Bundle.main.urls(forResourcesWithExtension: "wav", subdirectory: nil) ?? [])
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
-    var cabOn: Bool {
-        get { _ = cabTick; return engine.cabinetOn }
-        set { engine.cabinetOn = newValue; cabTick += 1 }
-    }
-    var mic2On: Bool {
-        get { _ = cabTick; return engine.cabinetMic2On }
-        set { engine.cabinetMic2On = newValue; cabTick += 1 }
-    }
-    /// Bumped when a cabinet setting changes, so views reading the computed properties refresh.
-    private var cabTick = 0
+    /// What slot 1 plays on first launch, so the amp is heard through a cabinet straight away:
+    /// the open 1x15 combo, the cabinet that matches Combo 40.
+    static let defaultFactoryIR = "combo-1x15-open-cap"
 
-    func loadCabIR(_ url: URL, slot: Int) {
+    /// Loads an IR into a mic slot. A load the user asked for into slot 2 also turns mic 2 on.
+    func loadCabIR(_ url: URL, slot: Int, restoring: Bool = false) {
         cabMessage = nil
         engine.loadCabinetIR(from: url, slot: slot) { [weak self] error in
             guard let self else { return }
             if let error {
                 self.cabMessage = error
             } else {
-                self.cabIRNames[slot] = url.deletingPathExtension().lastPathComponent
-                if slot == 1 { self.mic2On = true }
+                let name = url.deletingPathExtension().lastPathComponent
+                self.cabIRNames[slot] = name
+                // Only factory IRs are restored at launch. A user file needs a security-scoped
+                // bookmark to be reopened, which comes with presets (work package 15).
+                let isFactory = Self.factoryIRs.contains(url)
+                self.defaults.set(isFactory ? name : "", forKey: Keys.cabIR(slot))
+                if slot == 1 && !restoring { self.parameters.set("cab.mic2.on", 1) }
             }
             self.refreshCabLengths(after: 0.1)
         }
@@ -209,7 +218,21 @@ final class AudioController {
     func clearCabIR(slot: Int) {
         engine.clearCabinetIR(inSlot: slot)
         cabIRNames[slot] = ""
+        defaults.set("", forKey: Keys.cabIR(slot))
         refreshCabLengths(after: 0.1)
+    }
+
+    /// Loads the factory IRs remembered from the last session, or the default IR into slot 1
+    /// on the very first launch. The bridge holds them until the core is prepared.
+    private func restoreCabIRs() {
+        for slot in 0..<2 {
+            let saved = defaults.string(forKey: Keys.cabIR(slot))
+            let name = saved ?? (slot == 0 ? Self.defaultFactoryIR : "")
+            guard !name.isEmpty,
+                  let url = Self.factoryIRs.first(where: { $0.deletingPathExtension().lastPathComponent == name })
+            else { continue }
+            loadCabIR(url, slot: slot, restoring: true)
+        }
     }
 
     /// The length changes on the audio thread once the 20 ms crossfade is done.

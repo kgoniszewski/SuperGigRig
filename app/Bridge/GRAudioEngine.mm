@@ -897,20 +897,14 @@ static GigRigStatus loadIRFile(GigRigEngine* dsp, NSURL* url, int32_t slot, NSSt
 
 // MARK: Parameters and cabinet IRs
 
-- (BOOL)cabinetOn {
-    return gigrig_get_param(_dsp, GIGRIG_PARAM_CAB_ON) >= 0.5f;
+- (float)parameterValue:(NSInteger)paramId {
+    if (paramId < 0 || paramId >= GIGRIG_PARAM_COUNT) return 0.0f;
+    return gigrig_get_param(_dsp, static_cast<int32_t>(paramId));
 }
 
-- (void)setCabinetOn:(BOOL)on {
-    gigrig_set_param(_dsp, GIGRIG_PARAM_CAB_ON, on ? 1.0f : 0.0f);
-}
-
-- (BOOL)cabinetMic2On {
-    return gigrig_get_param(_dsp, GIGRIG_PARAM_CAB_MIC2_ON) >= 0.5f;
-}
-
-- (void)setCabinetMic2On:(BOOL)on {
-    gigrig_set_param(_dsp, GIGRIG_PARAM_CAB_MIC2_ON, on ? 1.0f : 0.0f);
+- (void)setParameter:(NSInteger)paramId value:(float)value {
+    if (paramId < 0 || paramId >= GIGRIG_PARAM_COUNT) return;
+    gigrig_set_param(_dsp, static_cast<int32_t>(paramId), value);
 }
 
 - (NSInteger)cabinetIRLengthInSlot:(NSInteger)slot {
