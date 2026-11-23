@@ -9,6 +9,7 @@
 #include "amps/combo40.hpp"
 #include "amps/triode.hpp"
 #include "blocks/rc_network.hpp"
+#include "amp_test_utils.hpp"
 #include "dsp_test_utils.hpp"
 
 using namespace gigrig;
@@ -16,30 +17,6 @@ using namespace gigrig::amp;
 using namespace gigrig::test;
 
 namespace {
-
-// Response of a network (gain and phase) measured by running a steady sine through it.
-template <class Network>
-std::complex<double> measuredResponse(Network& n, double freq, double sampleRate) {
-    n.reset();
-    const auto periods = std::max(40.0, freq * 0.05);
-    const auto len = static_cast<std::size_t>(std::ceil(periods * sampleRate / freq));
-    double re = 0.0, im = 0.0;
-    for (std::size_t i = 0; i < 2 * len; ++i) {
-        const double w = 2.0 * kPi * freq * static_cast<double>(i) / sampleRate;
-        const double y = n.process(std::sin(w));
-        if (i >= len) {  // second half: settled
-            re += y * std::sin(w);
-            im += y * std::cos(w);
-        }
-    }
-    // Rounded to whole periods only approximately, so allow for the window's leakage in the tolerance.
-    return std::complex<double>(re, im) * (2.0 / static_cast<double>(len));
-}
-
-// Analog frequency whose bilinear (trapezoidal) image is freq at sampleRate.
-double prewarped(double freq, double sampleRate) {
-    return sampleRate / kPi * std::tan(kPi * freq / sampleRate);
-}
 
 // Classic closed-form transfer function of the passive treble-bass-middle stack
 // (as published by D. T. Yeh and J. O. Smith, "Discretization of the '59 Fender
@@ -73,62 +50,6 @@ std::complex<double> publishedToneStack(double f, double t, double l, double m, 
         l * C1 * C2 * C3 * R1 * R2 * R4 + C1 * C2 * C3 * R1 * R3 * R4;
     const std::complex<double> s(0.0, 2.0 * kPi * f);
     return (b1 * s + b2 * s * s + b3 * s * s * s) / (1.0 + a1 * s + a2 * s * s + a3 * s * s * s);
-}
-
-// A driven amp as an aliasing-test stage (same shape as DrivenStage in test_nonlinear.cpp).
-struct AmpStage {
-    Combo40 amp;
-    void process(const float* in, float* out, int n) noexcept {
-        std::copy(in, in + n, out);
-        amp.process(out, n);
-    }
-};
-
-// Like aliasingDb in test_nonlinear.cpp, with a longer settling time: the amp's bias
-// shift and supply sag take a few hundred milliseconds to reach steady state.
-double ampAliasingDb(AmpStage& stage, double sampleRate, std::size_t toneBin, float amplitude) {
-    constexpr std::size_t n = 8192;
-    const double freq = static_cast<double>(toneBin) * sampleRate / static_cast<double>(n);
-    const std::size_t settle = (static_cast<std::size_t>(sampleRate * 1.5) / n + 1) * n;
-    const auto x = sine(settle + n, freq, sampleRate, static_cast<double>(amplitude));
-    std::vector<float> y(x.size());
-    for (std::size_t pos = 0; pos < x.size(); pos += 64) {
-        stage.process(x.data() + pos, y.data() + pos, 64);
-    }
-    const auto p = powerSpectrum(y.data() + settle, n);
-    double alias = 0.0;
-    const auto audibleBins = std::min(n / 2, static_cast<std::size_t>(20000.0 * n / sampleRate));
-    for (std::size_t k = 1; k <= audibleBins; ++k) {
-        if (k % toneBin != 0) {
-            alias += p[k];
-        }
-    }
-    return 10.0 * std::log10(alias / p[toneBin]);
-}
-
-// Steady-state output of the amp for a sine: fundamental amplitude and THD (harmonics 2 to 15).
-struct ToneResult {
-    double amplitude;
-    double thd;
-};
-
-ToneResult ampTone(const Combo40::Settings& s, double sampleRate, double freq, double amplitude) {
-    Combo40 amp;
-    amp.setSettings(s);
-    amp.prepare(sampleRate, 64);
-    const auto n = static_cast<std::size_t>(sampleRate);
-    auto x = sine(n, freq, sampleRate, amplitude);
-    for (std::size_t pos = 0; pos < n; pos += 64) {
-        amp.process(x.data() + pos, static_cast<int>(std::min<std::size_t>(64, n - pos)));
-    }
-    const std::size_t from = n / 2;
-    const double a1 = toneAmplitude(x.data() + from, n - from, freq, sampleRate);
-    double h = 0.0;
-    for (int k = 2; k <= 15 && freq * k < 0.45 * sampleRate; ++k) {
-        const double a = toneAmplitude(x.data() + from, n - from, freq * k, sampleRate);
-        h += a * a;
-    }
-    return {a1, std::sqrt(h) / a1};
 }
 
 }  // namespace
@@ -354,7 +275,7 @@ TEST_CASE("Combo 40: same small-signal tone at every sample rate") {
     const double freqs[] = {80.0, 300.0, 1000.0, 3000.0, 8000.0};
     for (double fs : {48000.0, 44100.0, 88200.0, 96000.0}) {
         for (std::size_t k = 0; k < 5; ++k) {
-            const double db = gainToDb(ampTone(s, fs, freqs[k], 0.001).amplitude / 0.001);
+            const double db = gainToDb(ampTone<Combo40>(s, fs, freqs[k], 0.001).amplitude / 0.001);
             if (fs == 48000.0) {
                 reference[k] = db;
             } else {
@@ -408,7 +329,7 @@ TEST_CASE("Combo 40: clean at low volume, breaks up as the volume rises") {
     double prevLevel = -200.0;
     for (float v : {2.0f, 4.0f, 6.0f, 8.0f, 10.0f}) {
         s.volume = v;
-        const ToneResult r = ampTone(s, fs, 220.0, in);
+        const ToneResult r = ampTone<Combo40>(s, fs, 220.0, in);
         std::printf("      %4.1f %6.1f %6.1f\n", static_cast<double>(v), gainToDb(r.amplitude),
                     100.0 * r.thd);
         CHECK(gainToDb(r.amplitude) > prevLevel);  // louder with every step
@@ -442,7 +363,7 @@ TEST_CASE("aliasing: Combo 40 driven hard keeps audible aliasing low") {
         const auto lowBin = static_cast<std::size_t>(std::lround(1200.0 * 8192.0 / fs)) | 1u;
         const auto highBin = static_cast<std::size_t>(std::lround(4800.0 * 8192.0 / fs)) | 1u;
         for (std::size_t bin : {lowBin, highBin}) {
-            AmpStage stage;
+            AmpStage<Combo40> stage;
             Combo40::Settings s;
             s.volume = 10.0f;
             s.treble = 10.0f;

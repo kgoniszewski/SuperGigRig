@@ -187,7 +187,29 @@ typedef enum GigRigSmoothing {
     X(GIGRIG_PARAM_REVERB_HIGHCUT, 64, "reverb.highcut", "High Cut", "Hz", 1000.0f, 20000.0f, 8000.0f,    \
       GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
     X(GIGRIG_PARAM_REVERB_ON, 65, "reverb.on", "On", "", 0.0f, 1.0f, 0.0f,                                \
-      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Amp section: which amp runs (0 Combo 40, 1 Steel 100; later models raise the maximum). */          \
+    X(GIGRIG_PARAM_AMP_MODEL, 66, "amp.model", "Amp Model", "", 0.0f, 1.0f, 0.0f,                         \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Steel 100 front panel (WP6). input: 0 normal, 1 FET. */                                            \
+    X(GIGRIG_PARAM_STEEL100_INPUT, 67, "steel100.input", "Input", "", 0.0f, 1.0f, 0.0f,                   \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_STEEL100_BRIGHT, 68, "steel100.bright", "Bright", "", 0.0f, 1.0f, 0.0f,                \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_STEEL100_MIDBOOST, 69, "steel100.midboost", "Mid Boost", "", 0.0f, 1.0f, 0.0f,         \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_STEEL100_GAIN, 70, "steel100.gain", "Gain", "", 0.0f, 10.0f, 5.0f,                     \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_STEEL100_BASS, 71, "steel100.bass", "Bass", "", 0.0f, 10.0f, 5.0f,                     \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_STEEL100_MIDDLE, 72, "steel100.middle", "Middle", "", 0.0f, 10.0f, 5.0f,               \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_STEEL100_TREBLE, 73, "steel100.treble", "Treble", "", 0.0f, 10.0f, 6.0f,               \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_STEEL100_MASTER, 74, "steel100.master", "Master", "", 0.0f, 10.0f, 5.0f,               \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_STEEL100_OUTPUT, 75, "steel100.output", "Output", "dB", -24.0f, 12.0f, 0.0f,           \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)
 /* clang-format on */
 
 typedef enum GigRigParamId {

@@ -43,3 +43,12 @@ package 3), so raw amp output sounds fizzy; listen through a speaker IR or cab s
 ./build/release/tools/render/gigrig_render -i di.wav -o clean.wav --set combo40.volume=4
 ./build/release/tools/render/gigrig_render -i di.wav -o edge.wav  --set combo40.volume=6 --set combo40.bright=1
 ```
+
+`amp.model` chooses the amp: 0 Combo 40, 1 Steel 100 (work package 6). Steel 100's controls are
+`steel100.input` (0 normal, 1 FET), `steel100.bright`, `steel100.midboost` (0 or 1), `steel100.gain`,
+`steel100.bass`, `steel100.middle`, `steel100.treble`, `steel100.master` (0 to 10) and `steel100.output` (dB).
+
+```sh
+./build/release/tools/render/gigrig_render -i di.wav -o steel.wav --ir1 ../irs/open-2x12-cap.wav \
+    --set amp.model=1 --set steel100.input=1 --set steel100.gain=5
+```

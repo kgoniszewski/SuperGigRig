@@ -14,6 +14,7 @@ add_executable(gigrig_tests
   test_render.cpp
   test_cabinet.cpp
   test_combo40.cpp
+  test_steel100.cpp
   test_pre_fx.cpp
   test_eq.cpp
   test_post_fx.cpp)

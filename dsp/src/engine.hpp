@@ -1,6 +1,7 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
-// Chain so far: Input level, Pre FX (work package 9), Combo 40 amp (work package 4),
+// Chain so far: Input level, Pre FX (work package 9), Amp section (Combo 40, work package 4;
+// Steel 100, work package 6),
 // Cab (work package 3), EQ (work package 11),
 // Post FX (work package 12), Output level. Later packages add the other blocks of docs/architecture.md,
 // section 4, and meters. Keep this class free of virtual dispatch on
@@ -10,7 +11,7 @@
 #include <atomic>
 #include <cstdint>
 
-#include "amps/combo40.hpp"
+#include "amps/amp_section.hpp"
 #include "blocks/smoother.hpp"
 #include "cab/cabinet.hpp"
 #include "commands.hpp"
@@ -78,8 +79,7 @@ private:
     Eq eq_;
     PostFx postFx_;
 
-    amp::Combo40 combo40_;
-    bool ampOn_ = true;
+    amp::AmpSection amps_;
 
     Cabinet cab_;
     std::atomic<double> loaderRate_{0.0};

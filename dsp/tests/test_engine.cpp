@@ -118,6 +118,15 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     for (int i = 0; i < 15; ++i) {
         CHECK(std::strcmp(parameterInfo(51 + i).key, wp12Keys[i]) == 0);
     }
+    // Work package 6: amp model choice and Steel 100, ids 66 to 75.
+    const char* const wp6Keys[] = {"amp.model",       "steel100.input",  "steel100.bright", "steel100.midboost",
+                                   "steel100.gain",   "steel100.bass",   "steel100.middle", "steel100.treble",
+                                   "steel100.master", "steel100.output"};
+    CHECK(GIGRIG_PARAM_AMP_MODEL == 66);
+    CHECK(GIGRIG_PARAM_STEEL100_OUTPUT == 75);
+    for (int i = 0; i < 10; ++i) {
+        CHECK(std::strcmp(parameterInfo(66 + i).key, wp6Keys[i]) == 0);
+    }
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {
