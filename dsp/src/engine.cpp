@@ -25,6 +25,7 @@ bool Engine::prepare(double sampleRate, int maxBlockSize) {
     cab_.prepare(sampleRate);
     eq_.setSettings(Eq::fromParameters(params_));
     eq_.prepare(sampleRate, maxBlockSize);
+    postFx_.prepare(sampleRate, maxBlockSize, params_);
     reset();
     prepared_ = true;
     loaderRate_.store(sampleRate, std::memory_order_release);
@@ -42,6 +43,7 @@ void Engine::reset() noexcept {
     cab_.reset();
     eq_.setSettings(Eq::fromParameters(params_));
     eq_.reset();
+    postFx_.reset(params_);
 }
 
 std::optional<Retired> Engine::applyCommand(const Command& c) noexcept {
@@ -107,7 +109,7 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     commands_.drain([this](const Command& c) noexcept { return applyCommand(c); });
     readParameters();
 
-    // Input level, Pre FX, the amp, the cabinet, EQ, then output level. With every
+    // Input level, Pre FX, the amp, the cabinet, EQ, Post FX, then output level. With every
     // pedal off, the amp bypassed, an empty cabinet and both levels at 0 dB, the
     // chain stays bit exact.
     for (int i = 0; i < numSamples; ++i) {
@@ -119,6 +121,7 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     }
     cab_.process(output, output, numSamples);
     eq_.process(output, numSamples, Eq::fromParameters(params_));
+    postFx_.process(output, numSamples, params_);
     for (int i = 0; i < numSamples; ++i) {
         output[i] *= outputGain_.next();
     }
