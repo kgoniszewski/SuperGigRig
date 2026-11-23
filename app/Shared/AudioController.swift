@@ -13,6 +13,15 @@ final class AudioController {
     static let sampleRates: [Double] = [44_100, 48_000, 88_200, 96_000]
     static let bufferSizes: [Int] = [32, 64, 128, 256]
 
+    /// First-launch sample rate. On the iPad, iOS keeps extra USB buffers it does not
+    /// report; they are fixed in samples, so 96 kHz halves them in time. Measured with the
+    /// AXE I/O One on 2026-11-23: 7.90 ms round trip at 48 kHz / 32, 4.53 ms at 96 kHz / 32.
+    #if os(iOS)
+    static let defaultSampleRate: Double = 96_000
+    #else
+    static let defaultSampleRate: Double = 48_000
+    #endif
+
     private let engine = GRAudioEngine()
     private let defaults = UserDefaults.standard
 
@@ -72,7 +81,7 @@ final class AudioController {
         let d = UserDefaults.standard
         preferredDeviceUID = d.string(forKey: Keys.device) ?? ""
         let rate = d.double(forKey: Keys.rate)
-        sampleRate = Self.sampleRates.contains(rate) ? rate : 48_000
+        sampleRate = Self.sampleRates.contains(rate) ? rate : Self.defaultSampleRate
         let buffer = d.integer(forKey: Keys.buffer)
         bufferFrames = Self.bufferSizes.contains(buffer) ? buffer : 32
         inputChannel = max(0, d.integer(forKey: Keys.input))
