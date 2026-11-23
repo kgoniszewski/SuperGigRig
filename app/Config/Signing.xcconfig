@@ -1,0 +1,14 @@
+// Signing settings shared by both app targets.
+//
+// To build on a device, create Config/Signing.local.xcconfig next to this file (it is
+// ignored by git) with your own values, for example:
+//
+//   DEVELOPMENT_TEAM = ABCDE12345
+//   GIGRIG_BUNDLE_PREFIX = com.yourname
+//
+// Your team id is in Xcode, Settings, Accounts, or on developer.apple.com under Membership.
+
+GIGRIG_BUNDLE_PREFIX = com.example
+DEVELOPMENT_TEAM =
+
+#include? "Signing.local.xcconfig"

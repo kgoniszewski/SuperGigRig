@@ -1,0 +1,94 @@
+# XcodeGen spec for the SuperGigRig apps. Generate the Xcode project on the Mac with
+#   brew install xcodegen      (once)
+#   cd app && xcodegen
+# The generated SuperGigRig.xcodeproj is not committed. Signing team and bundle id
+# prefix come from Config/Signing.local.xcconfig (see Config/Signing.xcconfig).
+name: SuperGigRig
+
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "27.0"
+    iOS: "27.0"
+
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CLANG_CXX_LANGUAGE_STANDARD: c++20
+    CLANG_CXX_LIBRARY: libc++
+    CLANG_ENABLE_OBJC_ARC: YES
+    GCC_C_LANGUAGE_STANDARD: gnu17
+    # The DSP core is compiled straight from dsp/ (CLAUDE.md: no CMake-generated headers).
+    HEADER_SEARCH_PATHS:
+      - $(SRCROOT)/../dsp/include
+      - $(SRCROOT)/../dsp/src
+      - $(SRCROOT)/Bridge
+    SWIFT_OBJC_BRIDGING_HEADER: Bridge/SuperGigRig-Bridging-Header.h
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+  configs:
+    Release:
+      # The audio path must be fast in the build Krzysztof plays through.
+      GCC_OPTIMIZATION_LEVEL: "3"
+
+targets:
+  SuperGigRig-macOS:
+    type: application
+    # A shared scheme per target, so each platform has its own, clearly named run target.
+    scheme: {}
+    platform: macOS
+    sources:
+      - path: Shared
+      - path: macOS
+      - path: Bridge
+        excludes:
+          - "tests/**"
+      - path: ../dsp/src
+        group: GigRigDSP
+      - path: ../dsp/include
+        group: GigRigDSP
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: SuperGigRig
+        PRODUCT_BUNDLE_IDENTIFIER: $(GIGRIG_BUNDLE_PREFIX).supergigrig
+        INFOPLIST_FILE: macOS/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: macOS/SuperGigRig.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+
+  SuperGigRig-iPadOS:
+    type: application
+    # A shared scheme per target, so each platform has its own, clearly named run target.
+    scheme: {}
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: iPadOS
+      - path: Bridge
+        excludes:
+          - "tests/**"
+      - path: ../dsp/src
+        group: GigRigDSP
+      - path: ../dsp/include
+        group: GigRigDSP
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: SuperGigRig
+        PRODUCT_BUNDLE_IDENTIFIER: $(GIGRIG_BUNDLE_PREFIX).supergigrig
+        INFOPLIST_FILE: iPadOS/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "2"
+        SUPPORTS_MACCATALYST: NO
+        # The iPad build must not run on the Mac ("Designed for iPad"): there AVAudioSession
+        # ignores the buffer size and grants 512 samples. The Mac has its own target.
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO

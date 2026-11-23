@@ -1,0 +1,43 @@
+name: App bridge
+
+# Tests the platform-independent C++ part of the app's audio bridge (render path and
+# loopback probe) on Linux, against the DSP core. The Swift and Objective-C++ code is
+# checked by Krzysztof's Xcode build; there is no macOS job by decision (2026-11-23).
+on:
+  push:
+    branches: [main]
+    paths: ["app/Bridge/**", "dsp/**", ".github/workflows/bridge.yml"]
+  pull_request:
+    paths: ["app/Bridge/**", "dsp/**", ".github/workflows/bridge.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: bridge tests (clang + sanitisers)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build clang libclang-rt-18-dev
+
+      - name: Configure
+        run: >
+          cmake -S app/Bridge/tests -B build/bridge -G Ninja
+          -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DGIGRIG_SANITIZE=ON
+
+      - name: Build
+        run: cmake --build build/bridge
+
+      - name: Test
+        run: ctest --test-dir build/bridge --output-on-failure
