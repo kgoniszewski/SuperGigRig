@@ -13,7 +13,8 @@ add_executable(gigrig_tests
   test_engine.cpp
   test_render.cpp
   test_cabinet.cpp
-  test_combo40.cpp)
+  test_combo40.cpp
+  test_pre_fx.cpp)
 target_link_libraries(gigrig_tests PRIVATE GigRig::dsp gigrig_dsp_internal gigrig_render_lib gigrig_irgen_lib
   gigrig_options)
 # The factory IRs are checked against the model that generates them.

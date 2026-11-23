@@ -46,6 +46,12 @@ add_library(gigrig_dsp STATIC
   src/cab/convolver.cpp
   src/cab/impulse_response.cpp
   src/cab/room.cpp
+  src/effects/boost.cpp
+  src/effects/bucket_delay.cpp
+  src/effects/env_filter.cpp
+  src/effects/gold_od.cpp
+  src/effects/pre_fx.cpp
+  src/effects/twin_od.cpp
   src/engine.cpp
   src/gigrig.cpp
   src/parameters.cpp)

@@ -92,6 +92,17 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     for (int i = 0; i < 6; ++i) {
         CHECK(std::strcmp(parameterInfo(12 + i).key, ampKeys[i]) == 0);
     }
+    // Work package 9: Pre FX, ids 18 to 39.
+    const char* const wp9Keys[] = {
+        "boost.volume",      "boost.mode",          "boost.on",         "envfilter.gain",
+        "envfilter.peak",    "envfilter.direction", "envfilter.speed",  "envfilter.range",
+        "envfilter.on",      "goldod.gain",         "goldod.level",     "goldod.treble",
+        "goldod.on",         "twinod.gain",         "twinod.mode",      "twinod.level",
+        "twinod.tone",       "twinod.on",           "bucketdelay.time", "bucketdelay.feedback",
+        "bucketdelay.blend", "bucketdelay.on"};
+    for (int i = 0; i < 22; ++i) {
+        CHECK(std::strcmp(parameterInfo(18 + i).key, wp9Keys[i]) == 0);
+    }
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {

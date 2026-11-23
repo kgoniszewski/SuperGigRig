@@ -20,7 +20,8 @@
  *     (the app's worker queue): they are the single producer of the command
  *     queue. They may run while audio is playing.
  *
- * State after work package 4: Input level, the Combo 40 amp (on by default,
+ * State after work packages 3, 4 and 9: Input level, the Pre FX pedals
+ * (parameters 18 to 39, all off by default), the Combo 40 amp (on by default,
  * bypassed with "amp.on" = 0), the Cab section (two IR slots and a room) and
  * Output level. Meters and the rest of the chain (docs/architecture.md,
  * sections 3 and 4) arrive in later packages.
@@ -37,7 +38,7 @@ extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 4
+#define GIGRIG_API_VERSION 5
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0

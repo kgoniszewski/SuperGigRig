@@ -81,7 +81,56 @@ typedef enum GigRigSmoothing {
     X(GIGRIG_PARAM_COMBO40_BASS,   16, "combo40.bass",    "Bass",   "",   0.0f,  10.0f, 4.0f,              \
       GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
     X(GIGRIG_PARAM_COMBO40_OUTPUT, 17, "combo40.output",  "Output", "dB", -24.0f, 12.0f, 0.0f,             \
-      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    /* Pre FX: Boost (section 4, row 1). mode: 0 clean, 1 overdrive. */                                   \
+    X(GIGRIG_PARAM_BOOST_VOLUME, 18, "boost.volume", "Volume", "dB", 0.0f, 20.0f, 6.0f,                   \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_BOOST_MODE, 19, "boost.mode", "Mode", "", 0.0f, 1.0f, 0.0f,                            \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_BOOST_ON, 20, "boost.on", "On", "", 0.0f, 1.0f, 0.0f,                                  \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Pre FX: Env Filter (row 2). direction: 0 up, 1 down; speed: 0 fast, 1 slow; range: 0 lo, 1 hi. */  \
+    X(GIGRIG_PARAM_ENVFILTER_GAIN, 21, "envfilter.gain", "Gain", "", 0.0f, 10.0f, 5.0f,                   \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_ENVFILTER_PEAK, 22, "envfilter.peak", "Peak", "", 0.0f, 10.0f, 5.0f,                   \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_ENVFILTER_DIRECTION, 23, "envfilter.direction", "Direction", "", 0.0f, 1.0f, 0.0f,     \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_ENVFILTER_SPEED, 24, "envfilter.speed", "Speed", "", 0.0f, 1.0f, 0.0f,                 \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_ENVFILTER_RANGE, 25, "envfilter.range", "Range", "", 0.0f, 1.0f, 0.0f,                 \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_ENVFILTER_ON, 26, "envfilter.on", "On", "", 0.0f, 1.0f, 0.0f,                          \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Pre FX: Gold OD (row 3). */                                                                        \
+    X(GIGRIG_PARAM_GOLDOD_GAIN, 27, "goldod.gain", "Gain", "", 0.0f, 10.0f, 3.0f,                         \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_GOLDOD_LEVEL, 28, "goldod.level", "Level", "dB", -24.0f, 12.0f, 0.0f,                  \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_GOLDOD_TREBLE, 29, "goldod.treble", "Treble", "", 0.0f, 10.0f, 5.0f,                   \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_GOLDOD_ON, 30, "goldod.on", "On", "", 0.0f, 1.0f, 0.0f,                                \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Pre FX: Twin OD (row 4). mode: 0 mid-focused, 1 amp-like. */                                       \
+    X(GIGRIG_PARAM_TWINOD_GAIN, 31, "twinod.gain", "Gain", "", 0.0f, 10.0f, 4.0f,                         \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_TWINOD_MODE, 32, "twinod.mode", "Mode", "", 0.0f, 1.0f, 0.0f,                          \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_TWINOD_LEVEL, 33, "twinod.level", "Level", "dB", -24.0f, 12.0f, 0.0f,                  \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_TWINOD_TONE, 34, "twinod.tone", "Tone", "", 0.0f, 10.0f, 5.0f,                         \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_TWINOD_ON, 35, "twinod.on", "On", "", 0.0f, 1.0f, 0.0f,                                \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* Pre FX: Bucket Delay (row 5). Feedback above 100% self-oscillates. */                              \
+    X(GIGRIG_PARAM_BUCKETDELAY_TIME, 36, "bucketdelay.time", "Time", "ms", 20.0f, 800.0f, 350.0f,         \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_BUCKETDELAY_FEEDBACK, 37, "bucketdelay.feedback", "Feedback", "%",                     \
+      0.0f, 110.0f, 35.0f, GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                  \
+    X(GIGRIG_PARAM_BUCKETDELAY_BLEND, 38, "bucketdelay.blend", "Blend", "%", 0.0f, 100.0f, 35.0f,         \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_BUCKETDELAY_ON, 39, "bucketdelay.on", "On", "", 0.0f, 1.0f, 0.0f,                      \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)
 /* clang-format on */
 
 typedef enum GigRigParamId {

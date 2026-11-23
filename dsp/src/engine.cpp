@@ -20,6 +20,7 @@ bool Engine::prepare(double sampleRate, int maxBlockSize) {
     maxBlockSize_ = maxBlockSize;
     inputGain_.prepare(sampleRate, kGainRampSeconds);
     outputGain_.prepare(sampleRate, kGainRampSeconds);
+    preFx_.prepare(sampleRate, maxBlockSize, params_);
     combo40_.prepare(sampleRate, maxBlockSize);
     cab_.prepare(sampleRate);
     reset();
@@ -34,6 +35,7 @@ void Engine::reset() noexcept {
     inputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(inputDb_))));
     outputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(outputDb_))));
     readParameters();
+    preFx_.reset(params_);
     combo40_.reset();
     cab_.reset();
 }
@@ -101,11 +103,13 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     commands_.drain([this](const Command& c) noexcept { return applyCommand(c); });
     readParameters();
 
-    // Input level, the amp, the cabinet, then output level. With the amp bypassed,
-    // an empty cabinet and both levels at 0 dB, the chain stays bit exact.
+    // Input level, Pre FX, the amp, the cabinet, then output level. With every
+    // pedal off, the amp bypassed, an empty cabinet and both levels at 0 dB, the
+    // chain stays bit exact.
     for (int i = 0; i < numSamples; ++i) {
         output[i] = input[i] * inputGain_.next();
     }
+    preFx_.process(output, numSamples, params_);
     if (ampOn_) {
         combo40_.process(output, numSamples);
     }
