@@ -11,7 +11,8 @@ add_executable(gigrig_tests
   test_time_blocks.cpp
   test_nonlinear.cpp
   test_engine.cpp
-  test_render.cpp)
+  test_render.cpp
+  test_pre_fx.cpp)
 target_link_libraries(gigrig_tests PRIVATE GigRig::dsp gigrig_dsp_internal gigrig_render_lib gigrig_options)
 target_include_directories(gigrig_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Threads REQUIRED)

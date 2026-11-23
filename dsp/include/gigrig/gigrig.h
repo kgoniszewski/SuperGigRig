@@ -16,10 +16,13 @@
  *   - gigrig_collect_garbage runs on one non-audio thread (the app's worker
  *     queue), never on the audio thread.
  *
- * Work package 2 state: the parameter table and command queues exist, and the
- * engine applies the Input and Output levels around an otherwise empty chain.
- * Meters and the signal chain (docs/architecture.md, sections 3 and 4) arrive
- * in later packages.
+ * State after work package 9: the parameter table and command queues exist,
+ * and the engine runs Input level, the Pre FX section (Boost, Env Filter, Gold
+ * OD, Twin OD, Bucket Delay; parameters 2 to 23) and Output level. With every
+ * pedal off the chain is bit exact. The rest of the signal chain
+ * (docs/architecture.md, section 4) and meters arrive in later packages.
+ *
+ * Version history: 2 parameters and commands; 3 Pre FX parameters.
  */
 #ifndef GIGRIG_GIGRIG_H
 #define GIGRIG_GIGRIG_H
@@ -33,7 +36,7 @@ extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 2
+#define GIGRIG_API_VERSION 3
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0

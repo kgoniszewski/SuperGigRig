@@ -70,6 +70,19 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     CHECK(GIGRIG_PARAM_OUTPUT_LEVEL == 1);
     CHECK(std::strcmp(parameterInfo(0).key, "input.level") == 0);
     CHECK(std::strcmp(parameterInfo(1).key, "output.level") == 0);
+    // Work package 9: Pre FX, ids 2 to 23.
+    const char* const preFxKeys[] = {
+        "boost.volume",      "boost.mode",          "boost.on",         "envfilter.gain",
+        "envfilter.peak",    "envfilter.direction", "envfilter.speed",  "envfilter.range",
+        "envfilter.on",      "goldod.gain",         "goldod.level",     "goldod.treble",
+        "goldod.on",         "twinod.gain",         "twinod.mode",      "twinod.level",
+        "twinod.tone",       "twinod.on",           "bucketdelay.time", "bucketdelay.feedback",
+        "bucketdelay.blend", "bucketdelay.on"};
+    for (int i = 0; i < 22; ++i) {
+        CHECK(std::strcmp(parameterInfo(2 + i).key, preFxKeys[i]) == 0);
+    }
+    CHECK(GIGRIG_PARAM_BOOST_VOLUME == 2);
+    CHECK(GIGRIG_PARAM_BUCKETDELAY_ON == 23);
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {

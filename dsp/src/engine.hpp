@@ -1,8 +1,8 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
-// Work package 2: parameters, command queues, and Input and Output level
-// around an empty chain. Later packages add meters and the signal chain from
-// docs/architecture.md, section 4. Keep this class free of virtual dispatch on
+// Work package 2: parameters, command queues, and Input and Output level.
+// Work package 9: the Pre FX section after the input level. Later packages add
+// the rest of the signal chain from docs/architecture.md, section 4, and meters. Keep this class free of virtual dispatch on
 // the audio path.
 #pragma once
 
@@ -10,6 +10,7 @@
 
 #include "blocks/smoother.hpp"
 #include "commands.hpp"
+#include "effects/pre_fx.hpp"
 #include "parameters.hpp"
 
 namespace gigrig {
@@ -33,6 +34,7 @@ public:
     void processBlock(const float* input, float* output, int numSamples) noexcept;
 
     ParameterValues& parameters() noexcept { return params_; }
+    PreFx& preFx() noexcept { return preFx_; }
     const ParameterValues& parameters() const noexcept { return params_; }
 
     // One producer thread (the app's worker queue). False when full; the caller then
@@ -61,6 +63,7 @@ private:
     float outputDb_ = 0.0f;
     LinearSmoother inputGain_;
     LinearSmoother outputGain_;
+    PreFx preFx_;
 
     double sampleRate_ = 0.0;
     int maxBlockSize_ = 0;

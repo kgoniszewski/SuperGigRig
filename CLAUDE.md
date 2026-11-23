@@ -81,8 +81,8 @@ with pragmas or by turning the option off.
   (1, 32, 64, 512), sample-rate sweep (44.1, 48, 88.2, 96 kHz), aliasing for nonlinear blocks, zero
   latency with time effects off. From WP2, every block also runs under the allocation guard.
 - `dsp/tests/dsp_test_utils.hpp` has the helpers: `checkBlockSizeIndependence` (runs every block
-  size under the allocation guard), `kTestRates`, test signals, `toneAmplitude` and an FFT. The
-  aliasing measurement to copy for new nonlinear blocks is `aliasingDb` in `test_nonlinear.cpp`.
+  size under the allocation guard), `kTestRates`, test signals, `toneAmplitude`, an FFT, and
+  `aliasingDb`, the aliasing measurement every nonlinear block's test uses.
 - New parameters are appended to `GIGRIG_PARAMETER_LIST` in `gigrig_params.h` with the next id, and
   the pinned-ids test in `test_engine.cpp` gets the new entry.
 

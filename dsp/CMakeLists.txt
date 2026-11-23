@@ -39,6 +39,12 @@ add_library(gigrig_dsp STATIC
   src/blocks/biquad.cpp
   src/blocks/delay_line.cpp
   src/blocks/oversampler.cpp
+  src/effects/boost.cpp
+  src/effects/bucket_delay.cpp
+  src/effects/env_filter.cpp
+  src/effects/gold_od.cpp
+  src/effects/pre_fx.cpp
+  src/effects/twin_od.cpp
   src/engine.cpp
   src/gigrig.cpp
   src/parameters.cpp)

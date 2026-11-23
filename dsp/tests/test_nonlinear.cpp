@@ -46,31 +46,6 @@ struct DrivenStage {
     }
 };
 
-// Aliasing of a stage driven by a steady sine: energy in every bin of the audible
-// band (up to 20 kHz) that is not a harmonic of the input, relative to the
-// fundamental, in dB. Above 20 kHz the cabinet and the ear remove it anyway. The tone sits exactly
-// on an FFT bin and the output is periodic in the window, so no window is needed
-// and every harmonic and every folded alias lands exactly on a bin.
-template <class Stage>
-double aliasingDb(Stage& stage, double sampleRate, std::size_t toneBin, float amplitude) {
-    constexpr std::size_t n = 8192;
-    const double freq = static_cast<double>(toneBin) * sampleRate / static_cast<double>(n);
-    const auto x = sine(n * 3, freq, sampleRate, static_cast<double>(amplitude));
-    std::vector<float> y(x.size());
-    for (std::size_t pos = 0; pos < x.size(); pos += 64) {
-        stage.process(x.data() + pos, y.data() + pos, 64);
-    }
-    const auto p = powerSpectrum(y.data() + 2 * n, n);  // skip two windows of settling
-    double alias = 0.0;
-    const auto audibleBins = std::min(n / 2, static_cast<std::size_t>(20000.0 * n / sampleRate));
-    for (std::size_t k = 1; k <= audibleBins; ++k) {
-        if (k % toneBin != 0) {
-            alias += p[k];
-        }
-    }
-    return 10.0 * std::log10(alias / p[toneBin]);
-}
-
 }  // namespace
 
 TEST_CASE("shapes: F is the antiderivative of f") {

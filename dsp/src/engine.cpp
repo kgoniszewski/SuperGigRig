@@ -19,6 +19,7 @@ bool Engine::prepare(double sampleRate, int maxBlockSize) {
     maxBlockSize_ = maxBlockSize;
     inputGain_.prepare(sampleRate, kGainRampSeconds);
     outputGain_.prepare(sampleRate, kGainRampSeconds);
+    preFx_.prepare(sampleRate, maxBlockSize, params_);
     reset();
     prepared_ = true;
     return true;
@@ -29,6 +30,7 @@ void Engine::reset() noexcept {
     outputDb_ = params_.get(GIGRIG_PARAM_OUTPUT_LEVEL);
     inputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(inputDb_))));
     outputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(outputDb_))));
+    preFx_.reset(params_);
 }
 
 Retired Engine::applyCommand(const Command& c) noexcept {
@@ -67,10 +69,16 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     commands_.drain([this](const Command& c) noexcept { return applyCommand(c); });
     readParameters();
 
-    // Input level, then (later packages) the chain, then output level. At 0 dB
-    // both gains are exactly 1, so the empty chain stays bit exact.
+    // Input level, the chain in place, then output level. At 0 dB both gains
+    // are exactly 1 and bypassed blocks pass their input untouched, so a chain
+    // with everything off stays bit exact.
     for (int i = 0; i < numSamples; ++i) {
-        output[i] = input[i] * inputGain_.next() * outputGain_.next();
+        output[i] = input[i] * inputGain_.next();
+    }
+    preFx_.process(output, numSamples, params_);
+    // Amp, cab, EQ and Post FX follow here (work packages 3, 4, 11 and 12).
+    for (int i = 0; i < numSamples; ++i) {
+        output[i] *= outputGain_.next();
     }
 }
 
