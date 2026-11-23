@@ -6,12 +6,12 @@ struct SuperGigRigApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RigView()
                 .environment(audio)
                 .task { await audio.startOnLaunch() }
         }
         #if os(macOS)
-        .defaultSize(width: 760, height: 560)
+        .defaultSize(width: 1200, height: 780)
         #endif
     }
 }

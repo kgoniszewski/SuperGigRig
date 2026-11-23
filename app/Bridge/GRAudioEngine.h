@@ -101,13 +101,19 @@ typedef NS_ENUM(NSInteger, GRLoopbackPhase) {
 - (void)loadCabinetIRFromURL:(NSURL *)url
                         slot:(NSInteger)slot
                   completion:(void (^)(NSString *_Nullable error))completion;
-/// The Cab section's on switch (cab.on) and mic 2's switch (cab.mic2.on). Any time.
-@property (nonatomic) BOOL cabinetOn;
-@property (nonatomic) BOOL cabinetMic2On;
 /// Fades the slot out and empties it.
 - (void)clearCabinetIRInSlot:(NSInteger)slot;
 /// Length in samples of the IR now playing in a slot (0 when empty), at the running rate.
 - (NSInteger)cabinetIRLengthInSlot:(NSInteger)slot;
+
+// Parameters (work package 5). Ids, keys and ranges come from the parameter table in
+// gigrig_params.h, which Swift reads directly through the C interface. Setting a value is
+// lock free and takes effect at the next audio block; the core clamps and rounds it.
+
+/// Current value of a parameter (the last value set, after clamping), 0 for an unknown id.
+- (float)parameterValue:(NSInteger)paramId NS_SWIFT_NAME(parameterValue(_:));
+/// Sets a parameter. Main thread, like the rest of this class.
+- (void)setParameter:(NSInteger)paramId value:(float)value NS_SWIFT_NAME(setParameter(_:value:));
 
 @end
 
