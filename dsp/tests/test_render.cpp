@@ -63,7 +63,7 @@ TEST_CASE("WAV reader rejects missing and malformed files") {
     CHECK(!readWav(path, r, error));
 }
 
-TEST_CASE("render tool: passthrough at defaults, levels from a preset and --set") {
+TEST_CASE("render tool: passthrough with the amp off, levels from a preset and --set") {
     WavData in;
     in.sampleRate = 48000.0;
     in.channels = 2;
@@ -78,7 +78,7 @@ TEST_CASE("render tool: passthrough at defaults, levels from a preset and --set"
     const auto outPath = tempPath("render_out.wav");
     REQUIRE(writeWav(inPath, in, WavFormat::Float32, error));
 
-    CHECK(render({"-i", inPath, "-o", outPath, "--block", "32"}) == 0);
+    CHECK(render({"-i", inPath, "-o", outPath, "--block", "32", "--set", "amp.on=0"}) == 0);
     WavData out;
     REQUIRE(readWav(outPath, out, error));
     CHECK(out.channels == 1);
@@ -86,7 +86,7 @@ TEST_CASE("render tool: passthrough at defaults, levels from a preset and --set"
     CHECK(out.samples == left);
 
     const auto presetPath = tempPath("render_preset.txt");
-    std::ofstream(presetPath) << "# test preset\ninput.level = 6   # comment\n\noutput.level=-12\n";
+    std::ofstream(presetPath) << "# test preset\ninput.level = 6   # comment\n\noutput.level=-12\namp.on = 0\n";
     CHECK(render({"-i", inPath, "-o", outPath, "-p", presetPath, "-s", "output.level=-6", "-t", "0.5"}) == 0);
     REQUIRE(readWav(outPath, out, error));
     CHECK(out.samples.size() == left.size() + 24000);

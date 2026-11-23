@@ -21,6 +21,9 @@ using EnginePtr = std::unique_ptr<GigRigEngine, EngineDeleter>;
 EnginePtr makeEngine(double sampleRate, int maxBlock) {
     EnginePtr e{gigrig_create()};
     REQUIRE(e != nullptr);
+    // These tests check the interface and level path, so the amp (on by default
+    // since work package 4) is bypassed to keep the chain bit exact.
+    gigrig_set_param(e.get(), GIGRIG_PARAM_AMP_ON, 0.0f);
     REQUIRE(gigrig_prepare(e.get(), sampleRate, maxBlock) == GIGRIG_OK);
     return e;
 }

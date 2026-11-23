@@ -16,10 +16,10 @@
  *   - gigrig_collect_garbage runs on one non-audio thread (the app's worker
  *     queue), never on the audio thread.
  *
- * Work package 2 state: the parameter table and command queues exist, and the
- * engine applies the Input and Output levels around an otherwise empty chain.
- * Meters and the signal chain (docs/architecture.md, sections 3 and 4) arrive
- * in later packages.
+ * Work package 4 state: the chain is Input level, the Combo 40 amp (on by
+ * default, bypassed with "amp.on" = 0) and Output level. Meters and the rest
+ * of the signal chain (docs/architecture.md, sections 3 and 4) arrive in later
+ * packages.
  */
 #ifndef GIGRIG_GIGRIG_H
 #define GIGRIG_GIGRIG_H
@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 2
+#define GIGRIG_API_VERSION 3
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0
@@ -88,7 +88,8 @@ void gigrig_process(GigRigEngine* engine, const float* input, float* output, int
 /* Latency the engine adds, in samples at the prepared rate. Always 0 by design. */
 int32_t gigrig_latency_samples(const GigRigEngine* engine);
 
-/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ---- */
+/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ----
+ * API version 3: the amp parameters (ids 2 to 7) and the Combo 40 amp in gigrig_process. */
 
 /* Number of parameters (GIGRIG_PARAM_COUNT). */
 int32_t gigrig_param_count(void);

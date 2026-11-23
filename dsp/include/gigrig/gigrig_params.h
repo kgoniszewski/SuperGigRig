@@ -46,6 +46,19 @@ typedef enum GigRigSmoothing {
     X(GIGRIG_PARAM_INPUT_LEVEL,  0, "input.level",  "Input",  "dB", -24.0f, 24.0f, 0.0f,                  \
       GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
     X(GIGRIG_PARAM_OUTPUT_LEVEL, 1, "output.level", "Output", "dB", -60.0f, 12.0f, 0.0f,                  \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    /* Amp section (section 4, row 8): amp bypass, then the Combo 40 front panel (WP4). */                \
+    X(GIGRIG_PARAM_AMP_ON,          2, "amp.on",          "Amp",    "",   0.0f,   1.0f, 1.0f,              \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_COMBO40_BRIGHT,  3, "combo40.bright",  "Bright", "",   0.0f,   1.0f, 0.0f,              \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    X(GIGRIG_PARAM_COMBO40_VOLUME,  4, "combo40.volume",  "Volume", "",   0.0f,  10.0f, 4.0f,              \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_COMBO40_TREBLE,  5, "combo40.treble",  "Treble", "",   0.0f,  10.0f, 6.0f,              \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_COMBO40_BASS,    6, "combo40.bass",    "Bass",   "",   0.0f,  10.0f, 4.0f,              \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_ONE_POLE)                                                     \
+    X(GIGRIG_PARAM_COMBO40_OUTPUT,  7, "combo40.output",  "Output", "dB", -24.0f, 12.0f, 0.0f,             \
       GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)
 /* clang-format on */
 

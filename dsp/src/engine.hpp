@@ -1,13 +1,14 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
-// Work package 2: parameters, command queues, and Input and Output level
-// around an empty chain. Later packages add meters and the signal chain from
-// docs/architecture.md, section 4. Keep this class free of virtual dispatch on
+// Work package 2: parameters, command queues, and Input and Output level.
+// Work package 4: the Combo 40 amp between them. Later packages add meters and
+// the rest of the signal chain from docs/architecture.md, section 4. Keep this class free of virtual dispatch on
 // the audio path.
 #pragma once
 
 #include <cstdint>
 
+#include "amps/combo40.hpp"
 #include "blocks/smoother.hpp"
 #include "commands.hpp"
 #include "parameters.hpp"
@@ -61,6 +62,9 @@ private:
     float outputDb_ = 0.0f;
     LinearSmoother inputGain_;
     LinearSmoother outputGain_;
+
+    amp::Combo40 combo40_;
+    bool ampOn_ = true;
 
     double sampleRate_ = 0.0;
     int maxBlockSize_ = 0;

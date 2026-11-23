@@ -36,6 +36,8 @@ endif()
 
 # The core library. New DSP sources are added to this list.
 add_library(gigrig_dsp STATIC
+  src/amps/combo40.cpp
+  src/amps/triode.cpp
   src/blocks/biquad.cpp
   src/blocks/delay_line.cpp
   src/blocks/oversampler.cpp

@@ -19,6 +19,7 @@ bool Engine::prepare(double sampleRate, int maxBlockSize) {
     maxBlockSize_ = maxBlockSize;
     inputGain_.prepare(sampleRate, kGainRampSeconds);
     outputGain_.prepare(sampleRate, kGainRampSeconds);
+    combo40_.prepare(sampleRate, maxBlockSize);
     reset();
     prepared_ = true;
     return true;
@@ -29,6 +30,8 @@ void Engine::reset() noexcept {
     outputDb_ = params_.get(GIGRIG_PARAM_OUTPUT_LEVEL);
     inputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(inputDb_))));
     outputGain_.snap(static_cast<float>(dbToGain(static_cast<double>(outputDb_))));
+    readParameters();
+    combo40_.reset();
 }
 
 Retired Engine::applyCommand(const Command& c) noexcept {
@@ -52,6 +55,19 @@ void Engine::readParameters() noexcept {
         outputDb_ = out;
         outputGain_.setTarget(static_cast<float>(dbToGain(static_cast<double>(out))));
     }
+    amp::Combo40::Settings combo;
+    combo.bright = params_.get(GIGRIG_PARAM_COMBO40_BRIGHT) >= 0.5f;
+    combo.volume = params_.get(GIGRIG_PARAM_COMBO40_VOLUME);
+    combo.treble = params_.get(GIGRIG_PARAM_COMBO40_TREBLE);
+    combo.bass = params_.get(GIGRIG_PARAM_COMBO40_BASS);
+    combo.outputDb = params_.get(GIGRIG_PARAM_COMBO40_OUTPUT);
+    combo40_.setSettings(combo);
+    // A bypassed amp keeps no stale state: switching it back on starts it from rest.
+    const bool ampOn = params_.get(GIGRIG_PARAM_AMP_ON) >= 0.5f;
+    if (ampOn && !ampOn_) {
+        combo40_.reset();
+    }
+    ampOn_ = ampOn;
 }
 
 void Engine::processBlock(const float* input, float* output, int numSamples) noexcept {
@@ -67,10 +83,16 @@ void Engine::processBlock(const float* input, float* output, int numSamples) noe
     commands_.drain([this](const Command& c) noexcept { return applyCommand(c); });
     readParameters();
 
-    // Input level, then (later packages) the chain, then output level. At 0 dB
-    // both gains are exactly 1, so the empty chain stays bit exact.
+    // Input level, the amp, then output level. With the amp bypassed and both
+    // levels at 0 dB the gains are exactly 1, so the chain stays bit exact.
     for (int i = 0; i < numSamples; ++i) {
-        output[i] = input[i] * inputGain_.next() * outputGain_.next();
+        output[i] = input[i] * inputGain_.next();
+    }
+    if (ampOn_) {
+        combo40_.process(output, numSamples);
+    }
+    for (int i = 0; i < numSamples; ++i) {
+        output[i] *= outputGain_.next();
     }
 }
 
