@@ -42,6 +42,16 @@ public:
         return true;
     }
 
+    // Consumer side. Copies the oldest item without removing it; false when empty.
+    bool peek(T& item) const noexcept {
+        const std::size_t head = head_.load(std::memory_order_relaxed);
+        if (head == tail_.load(std::memory_order_acquire)) {
+            return false;
+        }
+        item = slots_[head & kMask];
+        return true;
+    }
+
     // Consumer side: number of items that can be popped now.
     std::size_t sizeForConsumer() const noexcept {
         return tail_.load(std::memory_order_acquire) - head_.load(std::memory_order_relaxed);

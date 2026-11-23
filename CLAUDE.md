@@ -45,11 +45,13 @@ dsp/                      GigRigDSP, the C++20 core (no dependencies, builds on 
   CMakeLists.txt          library gigrig_dsp (alias GigRig::dsp) and tests
   CMakePresets.json       dev (Clang, Debug, ASan+UBSan) and release presets
   include/gigrig/         public C header gigrig.h and the parameter table gigrig_params.h
-  src/                    engine, parameters, command queues; amps, effects, convolver (later WPs)
+  src/                    engine, parameters, command queues; amps, effects (later WPs)
+  src/cab/                Cab section: zero-latency convolver, IR preparation, two mic slots, room (WP3)
   src/blocks/             shared building blocks: filters, smoothers, delay line, envelope,
                           LFO, waveshaper (ADAA), oversampler
   tests/                  unit and measurement tests (minimal harness in test_framework.hpp)
-  tools/render/           gigrig_render: WAV in, parameters in, WAV out
+  tools/render/           gigrig_render: WAV in, parameters and IRs in, WAV out
+  tools/irgen/            gigrig_irgen: generates the factory cab IRs in irs/ (WP3)
 app/                      SwiftUI app for both platforms (WP1 onward)
   project.yml             XcodeGen spec (WP1)
   Shared/  Bridge/  macOS/  iPadOS/

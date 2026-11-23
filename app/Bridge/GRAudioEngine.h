@@ -92,6 +92,23 @@ typedef NS_ENUM(NSInteger, GRLoopbackPhase) {
 /// skipped because the input was too noisy to detect the click.
 - (NSArray<NSNumber *> *)loopbackResults;
 
+// Cabinet IRs (work package 3). Files are read and prepared on a background queue,
+// never on the main or audio thread.
+
+/// Loads an audio file (WAV, AIFF, CAF and anything else AVAudioFile reads) into cabinet
+/// mic slot 0 or 1. If audio has not started yet, the IR loads when it starts.
+/// completion runs on the main thread with nil on success, or a message for the user.
+- (void)loadCabinetIRFromURL:(NSURL *)url
+                        slot:(NSInteger)slot
+                  completion:(void (^)(NSString *_Nullable error))completion;
+/// The Cab section's on switch (cab.on) and mic 2's switch (cab.mic2.on). Any time.
+@property (nonatomic) BOOL cabinetOn;
+@property (nonatomic) BOOL cabinetMic2On;
+/// Fades the slot out and empties it.
+- (void)clearCabinetIRInSlot:(NSInteger)slot;
+/// Length in samples of the IR now playing in a slot (0 when empty), at the running rate.
+- (NSInteger)cabinetIRLengthInSlot:(NSInteger)slot;
+
 @end
 
 NS_ASSUME_NONNULL_END
