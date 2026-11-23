@@ -9,11 +9,15 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/render/gigrig_render --list-params
 ./build/release/tools/render/gigrig_render -i di.wav -o out.wav --set input.level=6 --set output.level=-3
 ./build/release/tools/render/gigrig_render -i di.wav -o out.wav --preset clean.txt --block 32 --format s24
+./build/release/tools/render/gigrig_render -i di.wav -o out.wav --ir1 ../irs/combo-1x15-open-cap.wav \
+    --ir2 ../irs/combo-1x15-open-edge.wav --set cab.mic2.level=-6 --set cab.mic1.room=20
 ```
 
 - The input may be 16, 24 or 32 bit PCM or 32/64 bit float, any channel count; `--channel` picks one
   (default 1). The output is mono at the input's sample rate, 32-bit float unless `--format` says otherwise.
 - The core runs at the file's sample rate; there is no resampling.
+- `--ir1` and `--ir2` load cabinet IRs (any WAV the reader takes; resampled to the input's rate). Without
+  an IR the Cab section passes the signal through.
 - `--tail SECONDS` appends silence so delay and reverb tails are rendered.
 
 ## Preset files

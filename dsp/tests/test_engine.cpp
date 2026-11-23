@@ -71,16 +71,26 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     // If this fails, an id or key was renumbered or renamed: append instead.
     CHECK(GIGRIG_PARAM_INPUT_LEVEL == 0);
     CHECK(GIGRIG_PARAM_OUTPUT_LEVEL == 1);
-    CHECK(GIGRIG_PARAM_AMP_ON == 2);
-    CHECK(GIGRIG_PARAM_COMBO40_BRIGHT == 3);
-    CHECK(GIGRIG_PARAM_COMBO40_VOLUME == 4);
-    CHECK(GIGRIG_PARAM_COMBO40_TREBLE == 5);
-    CHECK(GIGRIG_PARAM_COMBO40_BASS == 6);
-    CHECK(GIGRIG_PARAM_COMBO40_OUTPUT == 7);
-    const char* keys[] = {"input.level",    "output.level",   "amp.on",      "combo40.bright",
-                          "combo40.volume", "combo40.treble", "combo40.bass", "combo40.output"};
-    for (int id = 0; id < 8; ++id) {
-        CHECK(std::strcmp(parameterInfo(id).key, keys[id]) == 0);
+    CHECK(std::strcmp(parameterInfo(0).key, "input.level") == 0);
+    CHECK(std::strcmp(parameterInfo(1).key, "output.level") == 0);
+    const char* const cabKeys[] = {"cab.on",         "cab.mic1.on",   "cab.mic1.level", "cab.mic1.phase",
+                                   "cab.mic1.room",  "cab.mic2.on",   "cab.mic2.level", "cab.mic2.phase",
+                                   "cab.mic2.room",  "cab.room.size"};
+    CHECK(GIGRIG_PARAM_CAB_ON == 2);
+    CHECK(GIGRIG_PARAM_CAB_ROOM_SIZE == 11);
+    for (int i = 0; i < 10; ++i) {
+        CHECK(std::strcmp(parameterInfo(2 + i).key, cabKeys[i]) == 0);
+    }
+    CHECK(GIGRIG_PARAM_AMP_ON == 12);
+    CHECK(GIGRIG_PARAM_COMBO40_BRIGHT == 13);
+    CHECK(GIGRIG_PARAM_COMBO40_VOLUME == 14);
+    CHECK(GIGRIG_PARAM_COMBO40_TREBLE == 15);
+    CHECK(GIGRIG_PARAM_COMBO40_BASS == 16);
+    CHECK(GIGRIG_PARAM_COMBO40_OUTPUT == 17);
+    const char* const ampKeys[] = {"amp.on",         "combo40.bright", "combo40.volume",
+                                   "combo40.treble", "combo40.bass",   "combo40.output"};
+    for (int i = 0; i < 6; ++i) {
+        CHECK(std::strcmp(parameterInfo(12 + i).key, ampKeys[i]) == 0);
     }
 }
 

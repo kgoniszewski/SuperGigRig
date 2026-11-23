@@ -40,7 +40,12 @@ add_library(gigrig_dsp STATIC
   src/amps/triode.cpp
   src/blocks/biquad.cpp
   src/blocks/delay_line.cpp
+  src/blocks/fft.cpp
   src/blocks/oversampler.cpp
+  src/cab/cabinet.cpp
+  src/cab/convolver.cpp
+  src/cab/impulse_response.cpp
+  src/cab/room.cpp
   src/engine.cpp
   src/gigrig.cpp
   src/parameters.cpp)
@@ -58,6 +63,7 @@ target_link_libraries(gigrig_dsp_internal INTERFACE gigrig_dsp)
 
 if(GIGRIG_BUILD_TOOLS OR GIGRIG_BUILD_TESTS)
   add_subdirectory(tools/render)
+  add_subdirectory(tools/irgen)
 endif()
 
 if(GIGRIG_BUILD_TESTS)
