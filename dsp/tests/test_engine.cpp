@@ -110,6 +110,14 @@ TEST_CASE("parameter ids and keys are pinned (presets depend on them)") {
     for (int i = 0; i < 11; ++i) {
         CHECK(std::strcmp(parameterInfo(40 + i).key, wp11Keys[i]) == 0);
     }
+    // Work package 12: tempo and Post FX, ids 51 to 65.
+    const char* const wp12Keys[] = {"tempo.bpm",      "delay.time",     "delay.sync",      "delay.division",
+                                    "delay.feedback", "delay.mix",      "delay.hardness",  "delay.on",
+                                    "reverb.mode",    "reverb.mix",     "reverb.predelay", "reverb.decay",
+                                    "reverb.lowcut",  "reverb.highcut", "reverb.on"};
+    for (int i = 0; i < 15; ++i) {
+        CHECK(std::strcmp(parameterInfo(51 + i).key, wp12Keys[i]) == 0);
+    }
 }
 
 TEST_CASE("parameter values: defaults, clamping, NaN ignored, unknown ids ignored") {
@@ -151,7 +159,8 @@ TEST_CASE("tapers: linear, log and stepped map to and from knob positions") {
 
     for (int32_t id = 0; id < gigrig_param_count(); ++id) {
         const float d = parameterInfo(id).default_value;
-        CHECK_NEAR(gigrig_param_from_normalized(id, gigrig_param_to_normalized(id, d)), d, 1e-4);
+        CHECK_NEAR(gigrig_param_from_normalized(id, gigrig_param_to_normalized(id, d)), d,
+                   1e-4f * std::max(1.0f, std::fabs(d)));  // relative: Hz values reach 20000
     }
     CHECK(gigrig_param_to_normalized(-1, 1.0f) == 0.0f);
     CHECK(gigrig_param_from_normalized(-1, 1.0f) == 0.0f);
