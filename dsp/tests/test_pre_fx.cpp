@@ -119,10 +119,11 @@ TEST_CASE("pre fx: everything on is block size independent and never allocates, 
     }
 }
 
-TEST_CASE("pre fx: all pedals off leaves the engine bit exact") {
+TEST_CASE("pre fx: all pedals off (and the amp bypassed) leaves the engine bit exact") {
     GigRigEngine* e = gigrig_create();
     REQUIRE(e != nullptr);
     REQUIRE(gigrig_prepare(e, 96000.0, 32) == GIGRIG_OK);
+    gigrig_set_param(e, GIGRIG_PARAM_AMP_ON, 0.0f);  // the amp is on by default
     const auto in = musicalSignal(9600, 96000.0);
     std::vector<float> out(in.size());
     for (std::size_t pos = 0; pos < in.size(); pos += 32) {

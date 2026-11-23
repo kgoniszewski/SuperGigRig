@@ -7,6 +7,7 @@
 #include <string>
 
 #include "dsp_test_utils.hpp"
+#include "cab/impulse_response.hpp"
 #include "render.hpp"
 #include "wav.hpp"
 
@@ -63,7 +64,7 @@ TEST_CASE("WAV reader rejects missing and malformed files") {
     CHECK(!readWav(path, r, error));
 }
 
-TEST_CASE("render tool: passthrough at defaults, levels from a preset and --set") {
+TEST_CASE("render tool: passthrough with the amp off, levels from a preset and --set") {
     WavData in;
     in.sampleRate = 48000.0;
     in.channels = 2;
@@ -78,7 +79,7 @@ TEST_CASE("render tool: passthrough at defaults, levels from a preset and --set"
     const auto outPath = tempPath("render_out.wav");
     REQUIRE(writeWav(inPath, in, WavFormat::Float32, error));
 
-    CHECK(render({"-i", inPath, "-o", outPath, "--block", "32"}) == 0);
+    CHECK(render({"-i", inPath, "-o", outPath, "--block", "32", "--set", "amp.on=0"}) == 0);
     WavData out;
     REQUIRE(readWav(outPath, out, error));
     CHECK(out.channels == 1);
@@ -86,12 +87,40 @@ TEST_CASE("render tool: passthrough at defaults, levels from a preset and --set"
     CHECK(out.samples == left);
 
     const auto presetPath = tempPath("render_preset.txt");
-    std::ofstream(presetPath) << "# test preset\ninput.level = 6   # comment\n\noutput.level=-12\n";
+    std::ofstream(presetPath) << "# test preset\ninput.level = 6   # comment\n\noutput.level=-12\namp.on = 0\n";
     CHECK(render({"-i", inPath, "-o", outPath, "-p", presetPath, "-s", "output.level=-6", "-t", "0.5"}) == 0);
     REQUIRE(readWav(outPath, out, error));
     CHECK(out.samples.size() == left.size() + 24000);
     CHECK_NEAR(maxAbs(out.samples), 0.25 * dbToGain(6.0 - 6.0), 1e-4);  // --set overrides the preset
     CHECK(out.samples.back() == 0.0f);
+}
+
+TEST_CASE("render tool: --ir1 plays an impulse through a factory cabinet IR") {
+    const std::string irPath = std::string(GIGRIG_IRS_DIR) + "/combo-1x15-open-cap.wav";
+    WavData ir;
+    std::string error;
+    REQUIRE(readWav(irPath, ir, error));
+
+    WavData in;
+    in.sampleRate = 96000.0;
+    in.channels = 1;
+    in.samples.assign(16384, 0.0f);
+    in.samples.front() = 1.0f;
+    const auto inPath = tempPath("render_impulse.wav");
+    const auto outPath = tempPath("render_cab.wav");
+    REQUIRE(writeWav(inPath, in, WavFormat::Float32, error));
+    CHECK(render({"-i", inPath, "-o", outPath, "--ir1", irPath, "--block", "32", "--set", "amp.on=0"}) == 0);
+    WavData out;
+    REQUIRE(readWav(outPath, out, error));
+    const auto expected =
+        prepareIr(makeSourceIr(ir.samples.data(), static_cast<int>(ir.frames()), 1, ir.sampleRate), 96000.0);
+    REQUIRE(expected.size() < out.samples.size());
+    double err = 0.0;
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        err = std::max(err, std::fabs(static_cast<double>(out.samples[i] - expected[i])));
+    }
+    CHECK(err < 1.0e-5);
+    CHECK(render({"-i", inPath, "-o", outPath, "--ir1", tempPath("missing_ir.wav")}) != 0);
 }
 
 TEST_CASE("render tool: bad arguments fail with a non-zero exit code") {

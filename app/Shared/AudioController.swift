@@ -169,6 +169,58 @@ final class AudioController {
         }
     }
 
+    // MARK: Cabinet (work package 3; the real Cab screen comes in work package 5)
+
+    /// File name of the IR last loaded into each mic slot, or "" for none.
+    private(set) var cabIRNames: [String] = ["", ""]
+    /// Length of the IR playing in each slot, in samples at the running rate (0 = empty).
+    private(set) var cabIRLengths: [Int] = [0, 0]
+    private(set) var cabMessage: String?
+
+    /// The factory IRs bundled from irs/ (generated, see irs/LICENSES.md).
+    static let factoryIRs: [URL] = (Bundle.main.urls(forResourcesWithExtension: "wav", subdirectory: nil) ?? [])
+        .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+    var cabOn: Bool {
+        get { _ = cabTick; return engine.cabinetOn }
+        set { engine.cabinetOn = newValue; cabTick += 1 }
+    }
+    var mic2On: Bool {
+        get { _ = cabTick; return engine.cabinetMic2On }
+        set { engine.cabinetMic2On = newValue; cabTick += 1 }
+    }
+    /// Bumped when a cabinet setting changes, so views reading the computed properties refresh.
+    private var cabTick = 0
+
+    func loadCabIR(_ url: URL, slot: Int) {
+        cabMessage = nil
+        engine.loadCabinetIR(from: url, slot: slot) { [weak self] error in
+            guard let self else { return }
+            if let error {
+                self.cabMessage = error
+            } else {
+                self.cabIRNames[slot] = url.deletingPathExtension().lastPathComponent
+                if slot == 1 { self.mic2On = true }
+            }
+            self.refreshCabLengths(after: 0.1)
+        }
+    }
+
+    func clearCabIR(slot: Int) {
+        engine.clearCabinetIR(inSlot: slot)
+        cabIRNames[slot] = ""
+        refreshCabLengths(after: 0.1)
+    }
+
+    /// The length changes on the audio thread once the 20 ms crossfade is done.
+    private func refreshCabLengths(after seconds: Double) {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard let self else { return }
+            self.cabIRLengths = (0..<2).map { self.engine.cabinetIRLength(inSlot: $0) }
+        }
+    }
+
     /// Result code of a ping whose input was too noisy (LoopbackProbe::kTooNoisy).
     static let loopbackTooNoisy = -2
 

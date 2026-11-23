@@ -25,6 +25,8 @@ const char* const kUsage =
     "  -o, --output FILE     output WAV, mono\n"
     "  -p, --preset FILE     parameter values, one 'key = value' per line, '#' starts a comment\n"
     "  -s, --set KEY=VALUE   set one parameter (after the preset; may repeat)\n"
+    "      --ir1 FILE        cabinet IR for mic 1 (WAV, any rate and channel count)\n"
+    "      --ir2 FILE        cabinet IR for mic 2; also switches mic 2 on (a preset may override)\n"
     "  -c, --channel N       input channel to use, from 1 (default 1)\n"
     "  -b, --block N         processing block size (default 64)\n"
     "  -t, --tail SECONDS    silence appended to the input, for decays (default 0)\n"
@@ -119,6 +121,7 @@ void listParameters(std::FILE* out) {
 
 int runRender(const std::vector<std::string>& args, std::FILE* out, std::FILE* err) {
     std::string inputPath, outputPath, presetPath;
+    std::string irPaths[GIGRIG_CAB_SLOT_COUNT];
     std::vector<std::string> sets;
     double channel = 1.0, block = 64.0, tail = 0.0;
     WavFormat format = WavFormat::Float32;
@@ -157,6 +160,10 @@ int runRender(const std::vector<std::string>& args, std::FILE* out, std::FILE* e
             if (!value(outputPath)) return 2;
         } else if (a == "-p" || a == "--preset") {
             if (!value(presetPath)) return 2;
+        } else if (a == "--ir1") {
+            if (!value(irPaths[0])) return 2;
+        } else if (a == "--ir2") {
+            if (!value(irPaths[1])) return 2;
         } else if (a == "-s" || a == "--set") {
             if (!value(text)) return 2;
             sets.push_back(text);
@@ -230,8 +237,38 @@ int runRender(const std::vector<std::string>& args, std::FILE* out, std::FILE* e
                      static_cast<int>(status));
         return 1;
     }
+    if (!irPaths[1].empty()) {
+        gigrig_set_param(engine.get(), GIGRIG_PARAM_CAB_MIC2_ON, 1.0f);
+    }
     for (const auto& [id, v] : values) {
         gigrig_set_param(engine.get(), id, v);
+    }
+    bool loadedIr = false;
+    for (int32_t slot = 0; slot < GIGRIG_CAB_SLOT_COUNT; ++slot) {
+        const std::string& path = irPaths[slot];
+        if (path.empty()) {
+            continue;
+        }
+        WavData ir;
+        if (!readWav(path, ir, error)) {
+            std::fprintf(err, "%s\n", error.c_str());
+            return 1;
+        }
+        const GigRigStatus s = gigrig_cab_load_ir(engine.get(), slot, ir.samples.data(),
+                                                  static_cast<int32_t>(ir.frames()), ir.channels, ir.sampleRate);
+        if (s != GIGRIG_OK) {
+            std::fprintf(err, "cannot load IR %s (status %d)\n", path.c_str(), static_cast<int>(s));
+            return 1;
+        }
+        loadedIr = true;
+    }
+    if (loadedIr) {
+        // Let the IR crossfades finish on silence before the real input starts.
+        std::vector<float> silence(static_cast<std::size_t>(blockSize), 0.0f);
+        const auto blocks = static_cast<int>(std::ceil(0.05 * in.sampleRate / blockSize));
+        for (int b = 0; b < blocks; ++b) {
+            gigrig_process(engine.get(), silence.data(), silence.data(), blockSize);
+        }
     }
     // Apply the settings as the starting state, as loading a preset would, not as a ramp.
     gigrig_reset(engine.get());

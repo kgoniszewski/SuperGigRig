@@ -16,13 +16,15 @@
  *   - gigrig_collect_garbage runs on one non-audio thread (the app's worker
  *     queue), never on the audio thread.
  *
- * State after work package 9: the parameter table and command queues exist,
- * and the engine runs Input level, the Pre FX section (Boost, Env Filter, Gold
- * OD, Twin OD, Bucket Delay; parameters 2 to 23) and Output level. With every
- * pedal off the chain is bit exact. The rest of the signal chain
- * (docs/architecture.md, section 4) and meters arrive in later packages.
+ *   - gigrig_cab_load_ir and gigrig_cab_clear_ir run on one non-audio thread
+ *     (the app's worker queue): they are the single producer of the command
+ *     queue. They may run while audio is playing.
  *
- * Version history: 2 parameters and commands; 3 Pre FX parameters.
+ * State after work packages 3, 4 and 9: Input level, the Pre FX pedals
+ * (parameters 18 to 39, all off by default), the Combo 40 amp (on by default,
+ * bypassed with "amp.on" = 0), the Cab section (two IR slots and a room) and
+ * Output level. Meters and the rest of the chain (docs/architecture.md,
+ * sections 3 and 4) arrive in later packages.
  */
 #ifndef GIGRIG_GIGRIG_H
 #define GIGRIG_GIGRIG_H
@@ -36,7 +38,7 @@ extern "C" {
 #endif
 
 /* Version of this C interface. Bumped whenever a function is added or changed. */
-#define GIGRIG_API_VERSION 3
+#define GIGRIG_API_VERSION 5
 
 /* Limits accepted by gigrig_prepare. */
 #define GIGRIG_MIN_SAMPLE_RATE 8000.0
@@ -49,8 +51,15 @@ typedef enum GigRigStatus {
     GIGRIG_ERROR_INVALID_SAMPLE_RATE = 2,
     GIGRIG_ERROR_INVALID_BLOCK_SIZE = 3,
     GIGRIG_ERROR_OUT_OF_MEMORY = 4,
-    GIGRIG_ERROR_INVALID_PARAM = 5
+    GIGRIG_ERROR_INVALID_PARAM = 5,
+    GIGRIG_ERROR_NOT_PREPARED = 6, /* API version 3 */
+    GIGRIG_ERROR_INVALID_IR = 7,   /* API version 3: no samples, bad format, or silent */
+    GIGRIG_ERROR_QUEUE_FULL = 8    /* API version 3: too many pending commands; retry later */
 } GigRigStatus;
+
+/* Cabinet limits (API version 3). */
+#define GIGRIG_CAB_SLOT_COUNT 2
+#define GIGRIG_CAB_MAX_IR_SECONDS 0.2
 
 /* Opaque engine handle. */
 typedef struct GigRigEngine GigRigEngine;
@@ -91,7 +100,8 @@ void gigrig_process(GigRigEngine* engine, const float* input, float* output, int
 /* Latency the engine adds, in samples at the prepared rate. Always 0 by design. */
 int32_t gigrig_latency_samples(const GigRigEngine* engine);
 
-/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ---- */
+/* ---- Parameters (API version 2). Ids and keys are declared in gigrig_params.h. ----
+ * API version 4: the amp parameters (ids 12 to 17) and the Combo 40 amp in gigrig_process. */
 
 /* Number of parameters (GIGRIG_PARAM_COUNT). */
 int32_t gigrig_param_count(void);
@@ -128,6 +138,41 @@ float gigrig_param_from_normalized(int32_t id, float normalized);
  * real-time safe.
  */
 int32_t gigrig_collect_garbage(GigRigEngine* engine);
+
+/* ---- Cabinet (API version 3) ---- */
+
+/*
+ * Loads an impulse response into a cabinet mic slot (0 or 1). Not real-time
+ * safe: call it on the worker queue, never on the audio thread.
+ *
+ * samples: frames x channels interleaved floats, as read from the file;
+ *   channels are averaged to mono.
+ * sample_rate: the file's rate (8 to 384 kHz). The IR is resampled to the
+ *   engine's rate, cut to GIGRIG_CAB_MAX_IR_SECONDS, its silent tail dropped,
+ *   and normalised so cabinets play at similar loudness.
+ *
+ * The data is copied; the caller keeps its buffer. The new IR crossfades in
+ * over 20 ms on the audio thread. The engine must be prepared first, and the
+ * IR follows later rate changes on its own. If the rate changes between this
+ * call and the audio thread picking the IR up, the load is dropped:
+ * gigrig_cab_ir_length then still shows the previous IR.
+ *
+ * Returns GIGRIG_OK, GIGRIG_ERROR_NULL_ENGINE, GIGRIG_ERROR_INVALID_PARAM (bad
+ * slot), GIGRIG_ERROR_NOT_PREPARED, GIGRIG_ERROR_INVALID_IR,
+ * GIGRIG_ERROR_OUT_OF_MEMORY or GIGRIG_ERROR_QUEUE_FULL.
+ */
+GigRigStatus gigrig_cab_load_ir(GigRigEngine* engine, int32_t slot, const float* samples, int32_t frames,
+                                int32_t channels, double sample_rate);
+
+/* Empties a cabinet slot (fades it out). Same thread rule and errors as gigrig_cab_load_ir. */
+GigRigStatus gigrig_cab_clear_ir(GigRigEngine* engine, int32_t slot);
+
+/*
+ * Length in samples, at the engine's rate, of the IR now playing in a slot,
+ * or 0 when the slot is empty (or for a bad slot or NULL engine). Any thread.
+ * It changes when a crossfade completes, so it confirms a load has arrived.
+ */
+int32_t gigrig_cab_ir_length(const GigRigEngine* engine, int32_t slot);
 
 #ifdef __cplusplus
 } /* extern "C" */

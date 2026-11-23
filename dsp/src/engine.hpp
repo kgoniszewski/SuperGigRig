@@ -1,14 +1,17 @@
 // engine.hpp - the C++ engine behind the C interface in gigrig.h.
 //
-// Work package 2: parameters, command queues, and Input and Output level.
-// Work package 9: the Pre FX section after the input level. Later packages add
-// the rest of the signal chain from docs/architecture.md, section 4, and meters. Keep this class free of virtual dispatch on
+// Chain so far: Input level, Pre FX (work package 9), Combo 40 amp (work package 4),
+// Cab (work package 3), Output level. Later packages add the other blocks of docs/architecture.md,
+// section 4, and meters. Keep this class free of virtual dispatch on
 // the audio path.
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 
+#include "amps/combo40.hpp"
 #include "blocks/smoother.hpp"
+#include "cab/cabinet.hpp"
 #include "commands.hpp"
 #include "effects/pre_fx.hpp"
 #include "parameters.hpp"
@@ -34,7 +37,6 @@ public:
     void processBlock(const float* input, float* output, int numSamples) noexcept;
 
     ParameterValues& parameters() noexcept { return params_; }
-    PreFx& preFx() noexcept { return preFx_; }
     const ParameterValues& parameters() const noexcept { return params_; }
 
     // One producer thread (the app's worker queue). False when full; the caller then
@@ -43,6 +45,11 @@ public:
 
     // One non-audio thread. Frees objects the audio thread has retired.
     int collectGarbage() noexcept { return commands_.collectGarbage(); }
+
+    // Any thread: the rate the engine was last prepared at, or 0. The IR loader builds for this rate.
+    double loaderSampleRate() const noexcept { return loaderRate_.load(std::memory_order_acquire); }
+
+    const Cabinet& cabinet() const noexcept { return cab_; }
 
     bool isPrepared() const noexcept { return prepared_; }
     double sampleRate() const noexcept { return sampleRate_; }
@@ -53,8 +60,9 @@ public:
     static constexpr double kGainRampSeconds = 0.02;
 
 private:
-    Retired applyCommand(const Command& c) noexcept;
+    std::optional<Retired> applyCommand(const Command& c) noexcept;
     void readParameters() noexcept;
+    void readCabParameters() noexcept;
 
     ParameterValues params_;
     CommandQueues commands_;
@@ -64,6 +72,12 @@ private:
     LinearSmoother inputGain_;
     LinearSmoother outputGain_;
     PreFx preFx_;
+
+    amp::Combo40 combo40_;
+    bool ampOn_ = true;
+
+    Cabinet cab_;
+    std::atomic<double> loaderRate_{0.0};
 
     double sampleRate_ = 0.0;
     int maxBlockSize_ = 0;

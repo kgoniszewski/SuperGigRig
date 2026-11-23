@@ -13,7 +13,10 @@ struct ContentView: View {
                     Text("SuperGigRig").font(.largeTitle.bold())
                     Text("Audio passthrough").foregroundStyle(.secondary)
                 }
-                Spacer()
+                Divider()
+            CabinetTestView()
+
+            Spacer()
                 Button {
                     showSettings = true
                 } label: {
