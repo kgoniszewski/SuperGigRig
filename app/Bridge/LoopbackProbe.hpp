@@ -6,11 +6,18 @@
 // result is the true round trip (buffers, converters and USB safety offsets together),
 // measured rather than estimated (docs/architecture.md, section 6).
 //
+// Robustness: the input noise is measured in the second half of each settling period,
+// and the detection threshold for the next click is set well above it. Hum or a guitar
+// left plugged in can then no longer fake an early detection; if the noise is so loud
+// that the click could not be told apart from it, the ping reports kTooNoisy instead
+// of a wrong number.
+//
 // Threading: arm() and the result readers run on the main thread; processInput() and
 // processOutput() run on the audio thread. They share only atomics. Nothing here
 // allocates, locks or makes system calls.
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -22,22 +29,26 @@ class LoopbackProbe {
 public:
     static constexpr int kMaxPings = 8;
     static constexpr int kClickFrames = 4;
-    static constexpr float kClickLevel = 0.5f;  // -6 dBFS: loud enough to survive the input gain
-    static constexpr int32_t kFailed = -1;
+    static constexpr float kClickLevel = 0.5f;    // -6 dBFS: loud enough to survive the input gain
+    static constexpr int32_t kFailed = -1;        // click never came back within the timeout
+    static constexpr int32_t kTooNoisy = -2;      // input too noisy to detect the click reliably
+    static constexpr float kNoiseMargin = 3.0f;   // threshold about 10 dB above the noise peak
+    static constexpr float kMaxThreshold = 0.25f; // above this the returning click is not distinct
 
     enum class Phase : int { Idle = 0, Settling, Emitting, Listening, Done };
 
     // Main thread. Starts a measurement of numPings clicks. settleFrames of silence
     // precede each click; a click not detected within timeoutFrames counts as failed.
-    // threshold is the absolute input level that counts as the click arriving.
+    // minThreshold is the lowest absolute input level that counts as the click arriving;
+    // the threshold actually used is raised above the measured noise.
     // Call only while phase() is Idle or Done (the bridge keeps track of that).
-    void arm(int numPings, int settleFrames, int timeoutFrames, float threshold) noexcept {
+    void arm(int numPings, int settleFrames, int timeoutFrames, float minThreshold) noexcept {
         if (numPings < 1) numPings = 1;
         if (numPings > kMaxPings) numPings = kMaxPings;
         reqPings_ = numPings;
         reqSettle_ = settleFrames > 0 ? settleFrames : 1;
         reqTimeout_ = timeoutFrames > 0 ? timeoutFrames : 1;
-        reqThreshold_ = threshold;
+        reqThreshold_ = minThreshold;
         resultCount_.store(0, std::memory_order_relaxed);
         // Release publishes the req* fields to the audio thread.
         request_.fetch_add(1, std::memory_order_release);
@@ -56,7 +67,7 @@ public:
     // Main thread. Phase as last seen by the audio thread.
     Phase phase() const noexcept { return static_cast<Phase>(phase_.load(std::memory_order_acquire)); }
 
-    // Main thread. Results published so far, each in frames, or kFailed.
+    // Main thread. Results published so far, each in frames, or kFailed / kTooNoisy.
     int resultCount() const noexcept { return resultCount_.load(std::memory_order_acquire); }
     int32_t result(int index) const noexcept {
         if (index < 0 || index >= kMaxPings) return kFailed;
@@ -68,6 +79,10 @@ public:
     // firstFrame is the shared frame counter value of in[0].
     void processInput(const float* in, int numFrames, uint64_t firstFrame) noexcept {
         pickUpRequest(firstFrame);
+        if (state_ == Phase::Settling) {
+            trackNoise(in, numFrames, firstFrame);
+            return;
+        }
         if (state_ != Phase::Listening) return;
         for (int i = 0; i < numFrames; ++i) {
             const uint64_t frame = firstFrame + static_cast<uint64_t>(i);
@@ -76,7 +91,7 @@ public:
                 publish(kFailed, frame);
                 return;
             }
-            if (in != nullptr && std::fabs(in[i]) >= threshold_) {
+            if (in != nullptr && std::fabs(in[i]) >= activeThreshold_) {
                 publish(static_cast<int32_t>(frame - clickFrame_), frame);
                 return;
             }
@@ -98,6 +113,11 @@ public:
             state_ = Phase::Emitting;
         }
         if (state_ == Phase::Emitting) {
+            activeThreshold_ = std::max(threshold_, kNoiseMargin * noisePeak_);
+            if (activeThreshold_ > kMaxThreshold) {
+                publish(kTooNoisy, firstFrame);  // starts the next settling period, output stays silent
+                return true;
+            }
             clickFrame_ = firstFrame;
             clickWritten_ = 0;
             state_ = Phase::Listening;
@@ -129,7 +149,18 @@ private:
         startSettling(now);
     }
 
+    void trackNoise(const float* in, int numFrames, uint64_t firstFrame) noexcept {
+        if (in == nullptr) return;
+        // Only the second half counts, so the tail of the previous click has died away.
+        const uint64_t from = settleUntil_ - static_cast<uint64_t>(settle_ / 2);
+        for (int i = 0; i < numFrames; ++i) {
+            if (firstFrame + static_cast<uint64_t>(i) >= from)
+                noisePeak_ = std::max(noisePeak_, std::fabs(in[i]));
+        }
+    }
+
     void startSettling(uint64_t now) noexcept {
+        noisePeak_ = 0.0f;
         settleUntil_ = now + static_cast<uint64_t>(settle_);
         state_ = Phase::Settling;
         phase_.store(static_cast<int>(state_), std::memory_order_release);
@@ -166,6 +197,8 @@ private:
     int settle_ = 1;
     int timeout_ = 1;
     float threshold_ = 0.05f;
+    float activeThreshold_ = 0.05f;
+    float noisePeak_ = 0.0f;
     int done_ = 0;
     int clickWritten_ = 0;
     uint64_t settleUntil_ = 0;

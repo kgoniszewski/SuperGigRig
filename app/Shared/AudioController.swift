@@ -23,7 +23,7 @@ final class AudioController {
     private(set) var devices: [GRAudioDevice] = []
     private(set) var permission: Permission = .unknown
     private(set) var loopbackPhase: GRLoopbackPhase = .idle
-    /// Measured round trips in frames; -1 marks a click that never came back.
+    /// Measured round trips in frames; -1 marks a click that never came back, -2 a too noisy input.
     private(set) var loopbackResults: [Int] = []
     private(set) var loopbackRate: Double = 0
 
@@ -162,6 +162,16 @@ final class AudioController {
                 }
             }
         }
+    }
+
+    /// Result code of a ping whose input was too noisy (LoopbackProbe::kTooNoisy).
+    static let loopbackTooNoisy = -2
+
+    /// Largest minus smallest successful ping, in frames; 0 with fewer than two.
+    var loopbackSpreadFrames: Int {
+        let ok = loopbackResults.filter { $0 >= 0 }
+        guard let lo = ok.min(), let hi = ok.max() else { return 0 }
+        return hi - lo
     }
 
     /// Median of the successful pings, in frames.

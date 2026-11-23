@@ -84,3 +84,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "2"
         SUPPORTS_MACCATALYST: NO
+        # The iPad build must not run on the Mac ("Designed for iPad"): there AVAudioSession
+        # ignores the buffer size and grants 512 samples. The Mac has its own target.
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO

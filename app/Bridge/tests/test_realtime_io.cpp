@@ -1,6 +1,7 @@
 // test_realtime_io.cpp - tests for the platform-independent render path of the app bridge.
 #include <gigrig/gigrig.h>
 
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -34,7 +35,7 @@ float ramp(std::size_t i, int channel) {
 // Simulates a device whose output is cabled back to input channel `loopChannel` with a
 // round trip of `latency` frames, driven in cycles of `block` frames (latency >= block,
 // as on real hardware). Returns what the probe measured.
-std::vector<int32_t> measureLoopback(int block, int latency, int loopChannel, int pings) {
+std::vector<int32_t> measureLoopback(int block, int latency, int loopChannel, int pings, float hum = 0.0f) {
     Rig rig;
     rig.io->setInputChannel(loopChannel);
     rig.io->probe().arm(pings, 480, 9600, 0.05f);
@@ -53,7 +54,10 @@ std::vector<int32_t> measureLoopback(int block, int latency, int loopChannel, in
             const std::size_t f = frame + static_cast<std::size_t>(i);
             const float back =
                 f >= static_cast<std::size_t>(latency) ? sent[f - static_cast<std::size_t>(latency)] : 0.0f;
-            inBuf[loopChannel][static_cast<std::size_t>(i)] = back;
+            // Optional 50 Hz hum on top of the returning signal, like a noisy cable or pickup.
+            const float noise = hum * static_cast<float>(std::sin(2.0 * 3.141592653589793 * 50.0 *
+                                                                  static_cast<double>(f) / 48000.0));
+            inBuf[loopChannel][static_cast<std::size_t>(i)] = back + noise;
             inBuf[1 - loopChannel][static_cast<std::size_t>(i)] = 0.0f;
         }
         const float* in[numIn] = {inBuf[0].data(), inBuf[1].data()};
@@ -169,4 +173,16 @@ TEST_CASE("bridge: guitar signal is muted while measuring and returns afterwards
     REQUIRE(rig.io->probe().phase() == LoopbackProbe::Phase::Done);
     rig.io->renderMono(in, 1, out, 1, n);
     for (float v : out0) CHECK(v == 0.01f);
+}
+
+TEST_CASE("bridge: loopback probe ignores hum below the click and reports a too noisy input") {
+    // -24 dBFS hum is above a fixed -26 dBFS threshold but well below the click: still exact.
+    const auto quiet = measureLoopback(64, 300, 0, 5, 0.06f);
+    REQUIRE(quiet.size() == 5);
+    for (int32_t v : quiet) CHECK(v == 300);
+
+    // -20 dBFS hum: the click is not distinct enough, so no number is reported.
+    const auto loud = measureLoopback(64, 300, 0, 3, 0.1f);
+    REQUIRE(loud.size() == 3);
+    for (int32_t v : loud) CHECK(v == LoopbackProbe::kTooNoisy);
 }

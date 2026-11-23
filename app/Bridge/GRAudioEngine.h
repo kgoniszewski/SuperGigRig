@@ -88,7 +88,8 @@ typedef NS_ENUM(NSInteger, GRLoopbackPhase) {
 /// Does nothing unless running and idle.
 - (void)startLoopbackMeasurementWithPings:(NSInteger)pings;
 @property (nonatomic, readonly) GRLoopbackPhase loopbackPhase;
-/// Round trips measured so far, in frames; -1 marks a click that never came back.
+/// Round trips measured so far, in frames; -1 marks a click that never came back, -2 a ping
+/// skipped because the input was too noisy to detect the click.
 - (NSArray<NSNumber *> *)loopbackResults;
 
 @end

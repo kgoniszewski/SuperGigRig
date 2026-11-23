@@ -462,10 +462,12 @@ NSString* describeStatus(OSStatus err) {
     if (_state != GREngineStateRunning || self.loopbackPhase == GRLoopbackPhaseMeasuring) return;
     const NSInteger n = std::clamp<NSInteger>(pings, 1, gigrig::app::LoopbackProbe::kMaxPings);
     const double rate = _runningRate;
-    // 200 ms of silence before each click lets the previous one die away; a click that
-    // has not come back after 500 ms means the cable or the input channel is wrong.
+    // 200 ms of silence before each click lets the previous one die away (and gives the
+    // probe its noise measurement); a click that has not come back after 500 ms means the
+    // cable or the input channel is wrong. -34 dBFS is only the lowest threshold: the
+    // probe raises it above the measured noise.
     _render->io.probe().arm(static_cast<int>(n), static_cast<int>(0.2 * rate), static_cast<int>(0.5 * rate),
-                            0.05f);
+                            0.02f);
     _loopbackExpected = n;
     _loopbackActive = YES;
 }
@@ -702,6 +704,11 @@ NSString* describeStatus(OSStatus err) {
     // Ask for every channel the interface has, so input 2 can be selected.
     [session setPreferredInputNumberOfChannels:session.maximumInputNumberOfChannels error:nil];
     [session setPreferredOutputNumberOfChannels:session.maximumOutputNumberOfChannels error:nil];
+    // Ask for the buffer again now that the route and channel count are final: a route
+    // or channel change can reset the I/O buffer to the system default.
+    [session setPreferredSampleRate:_preferredSampleRate error:nil];
+    [session setPreferredIOBufferDuration:static_cast<double>(_preferredBufferFrames) / session.sampleRate
+                                    error:nil];
 
     AVAudioSessionRouteDescription* route = session.currentRoute;
     AVAudioSessionPortDescription* in = route.inputs.firstObject;
