@@ -40,6 +40,8 @@ settings:
 targets:
   SuperGigRig-macOS:
     type: application
+    # A shared scheme per target, so each platform has its own, clearly named run target.
+    scheme: {}
     platform: macOS
     sources:
       - path: Shared
@@ -64,6 +66,8 @@ targets:
 
   SuperGigRig-iPadOS:
     type: application
+    # A shared scheme per target, so each platform has its own, clearly named run target.
+    scheme: {}
     platform: iOS
     sources:
       - path: Shared
