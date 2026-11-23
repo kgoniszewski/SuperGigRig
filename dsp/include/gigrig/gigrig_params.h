@@ -130,6 +130,29 @@ typedef enum GigRigSmoothing {
     X(GIGRIG_PARAM_BUCKETDELAY_BLEND, 38, "bucketdelay.blend", "Blend", "%", 0.0f, 100.0f, 35.0f,         \
       GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
     X(GIGRIG_PARAM_BUCKETDELAY_ON, 39, "bucketdelay.on", "On", "", 0.0f, 1.0f, 0.0f,                      \
+      GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)                                                        \
+    /* EQ (row 10): high pass at 20 Hz and low pass at 20 kHz are off. The compressor is not in v1. */    \
+    X(GIGRIG_PARAM_EQ_HIGHPASS, 40, "eq.highpass", "High Pass", "Hz", 20.0f, 1000.0f, 20.0f,              \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_EQ_LOWPASS, 41, "eq.lowpass", "Low Pass", "Hz", 1000.0f, 20000.0f, 20000.0f,           \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_EQ_LOW_FREQ, 42, "eq.low.freq", "Low Freq", "Hz", 40.0f, 500.0f, 100.0f,               \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_EQ_LOW_GAIN, 43, "eq.low.gain", "Low Gain", "dB", -12.0f, 12.0f, 0.0f,                 \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_EQ_MID1_FREQ, 44, "eq.mid1.freq", "Mid 1 Freq", "Hz", 100.0f, 2000.0f, 500.0f,         \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_EQ_MID1_GAIN, 45, "eq.mid1.gain", "Mid 1 Gain", "dB", -12.0f, 12.0f, 0.0f,             \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_EQ_MID2_FREQ, 46, "eq.mid2.freq", "Mid 2 Freq", "Hz", 500.0f, 8000.0f, 2000.0f,        \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_EQ_MID2_GAIN, 47, "eq.mid2.gain", "Mid 2 Gain", "dB", -12.0f, 12.0f, 0.0f,             \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_EQ_HIGH_FREQ, 48, "eq.high.freq", "High Freq", "Hz", 1000.0f, 12000.0f, 5000.0f,       \
+      GIGRIG_TAPER_LOG, GIGRIG_SMOOTHING_ONE_POLE)                                                        \
+    X(GIGRIG_PARAM_EQ_HIGH_GAIN, 49, "eq.high.gain", "High Gain", "dB", -12.0f, 12.0f, 0.0f,              \
+      GIGRIG_TAPER_LINEAR, GIGRIG_SMOOTHING_LINEAR)                                                       \
+    X(GIGRIG_PARAM_EQ_ON, 50, "eq.on", "On", "", 0.0f, 1.0f, 0.0f,                                        \
       GIGRIG_TAPER_STEPPED, GIGRIG_SMOOTHING_NONE)
 /* clang-format on */
 
