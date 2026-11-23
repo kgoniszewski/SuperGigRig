@@ -24,6 +24,9 @@ struct Rig {
     std::unique_ptr<RealtimeIO> io = std::make_unique<RealtimeIO>();
     Rig() {
         REQUIRE(dsp != nullptr);
+        // These tests check channel routing and the loopback probe, so the amp (on by
+        // default since work package 4) is bypassed to keep the DSP a bit-exact passthrough.
+        gigrig_set_param(dsp.get(), GIGRIG_PARAM_AMP_ON, 0.0f);
         REQUIRE(io->prepare(dsp.get(), 48000.0));
     }
 };
